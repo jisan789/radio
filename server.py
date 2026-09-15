@@ -2,7 +2,7 @@ import os
 import json
 import socket
 import logging
-from typing import Dict, Optional
+from typing import Dict, Set
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -41,7 +41,7 @@ class Room:
     def __init__(self, room_id: str):
         self.room_id = room_id
         self.peers: Dict[str, Peer] = {}
-        self.active_speaker_id: Optional[str] = None
+        self.active_speaker_ids: Set[str] = set()
 
     async def broadcast(self, message: dict, exclude_client_id: Optional[str] = None):
         payload = json.dumps(message)
@@ -78,8 +78,6 @@ class RoomManager:
         await room.broadcast({
             "type": "peer_joined",
             "peer": {"client_id": client_id, "username": username},
-            "active_speaker_id": room.active_speaker_id,
-            "speaker_name": room.peers[room.active_speaker_id].username if room.active_speaker_id and room.active_speaker_id in room.peers else None
         }, exclude_client_id=client_id)
 
         # Send existing peer list and room state to the newly joined peer
@@ -87,8 +85,7 @@ class RoomManager:
             "type": "room_state",
             "room_id": room_id,
             "peers": room.get_peer_list(),
-            "active_speaker_id": room.active_speaker_id,
-            "speaker_name": room.peers[room.active_speaker_id].username if room.active_speaker_id and room.active_speaker_id in room.peers else None
+            "active_speaker_ids": list(room.active_speaker_ids)
         }))
         return room
 
@@ -101,11 +98,10 @@ class RoomManager:
             del room.peers[client_id]
             logger.info(f"User '{username}' ({client_id}) left room '{room_id}'.")
 
-            # Release floor if speaker left
-            if room.active_speaker_id == client_id:
-                room.active_speaker_id = None
+            if client_id in room.active_speaker_ids:
+                room.active_speaker_ids.discard(client_id)
                 await room.broadcast({
-                    "type": "floor_released",
+                    "type": "speaker_stopped",
                     "client_id": client_id
                 })
 
@@ -121,7 +117,7 @@ class RoomManager:
 
 manager = RoomManager()
 
-# WebSocket endpoint for signaling and floor arbitration
+# WebSocket endpoint for signaling and speaker state
 @app.websocket("/ws/{room_id}/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str, username: str = "Operator"):
     await websocket.accept()
@@ -134,28 +130,19 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str, client_id: str,
             msg_type = data.get("type")
 
             if msg_type == "talk_request":
-                # Push-To-Talk: Request to speak
-                if room.active_speaker_id is None:
-                    room.active_speaker_id = client_id
+                if client_id not in room.active_speaker_ids:
+                    room.active_speaker_ids.add(client_id)
                     await room.broadcast({
-                        "type": "floor_granted",
+                        "type": "speaker_started",
                         "speaker_id": client_id,
                         "speaker_name": username
                     })
-                else:
-                    # Floor is already taken
-                    await websocket.send_text(json.dumps({
-                        "type": "floor_denied",
-                        "active_speaker_id": room.active_speaker_id,
-                        "speaker_name": room.peers[room.active_speaker_id].username if room.active_speaker_id in room.peers else "Unknown"
-                    }))
 
             elif msg_type == "talk_release":
-                # Push-To-Talk: Release floor
-                if room.active_speaker_id == client_id:
-                    room.active_speaker_id = None
+                if client_id in room.active_speaker_ids:
+                    room.active_speaker_ids.discard(client_id)
                     await room.broadcast({
-                        "type": "floor_released",
+                        "type": "speaker_stopped",
                         "speaker_id": client_id,
                         "speaker_name": username
                     })

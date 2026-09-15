@@ -4,7 +4,7 @@
  * - Room Join/Leave UI state
  * - WebSocket connection and message routing
  * - Tactical PTT pointer events (mouse/touch) & Spacebar shortcuts
- * - Floor control states (Standby, TX, RX, Busy)
+ * - Independent push-to-talk state for every connected operator
  * - Canvas audio visualizer animation loop
  */
 
@@ -43,8 +43,7 @@
     let ws = null;
     let webrtcManager = null;
     let isTransmitting = false;
-    let isFloorBusy = false;
-    let activeSpeakerId = null;
+    const activeSpeakerIds = new Set();
     let spaceKeyDown = false;
     let knownPeers = new Map(); // client_id -> username
 
@@ -218,11 +217,9 @@
                     }
                 });
                 updatePeersUI();
-                if (msg.active_speaker_id) {
-                    setFloorState(msg.active_speaker_id, msg.speaker_name);
-                } else {
-                    clearFloorState();
-                }
+                activeSpeakerIds.clear();
+                (msg.active_speaker_ids || []).forEach(id => activeSpeakerIds.add(id));
+                updateAudioState();
                 break;
 
             case 'peer_joined':
@@ -239,19 +236,14 @@
                 showToast(`${msg.username} left channel`);
                 break;
 
-            case 'floor_granted':
-                setFloorState(msg.speaker_id, msg.speaker_name);
+            case 'speaker_started':
+                activeSpeakerIds.add(msg.speaker_id);
+                updateAudioState();
                 break;
 
-            case 'floor_denied':
-                // Someone beat us to transmitting
-                showToast(`Channel Busy: ${msg.speaker_name} transmitting`);
-                window.tacticalAudioFX.playBusyAlert();
-                resetPttState();
-                break;
-
-            case 'floor_released':
-                clearFloorState();
+            case 'speaker_stopped':
+                activeSpeakerIds.delete(msg.speaker_id || msg.client_id);
+                updateAudioState();
                 break;
 
             // WebRTC Signaling
@@ -269,69 +261,30 @@
         }
     }
 
-    function setFloorState(speakerId, speakerName) {
-        activeSpeakerId = speakerId;
+    function updateAudioState() {
+        const remoteSpeakers = [...activeSpeakerIds].filter(id => id !== clientId);
+        const remoteNames = remoteSpeakers.map(id => knownPeers.get(id)).filter(Boolean);
+        const receiving = remoteSpeakers.length > 0;
 
-        if (speakerId === clientId) {
-            // Current client is transmitting.
-            isTransmitting = true;
-            isFloorBusy = false;
-            webrtcManager.setMicrophoneEnabled(true);
-            window.tacticalAudioFX.playPttKey();
+        if (webrtcManager) webrtcManager.setMicrophoneEnabled(isTransmitting);
+        txLed.classList.toggle('tx-active', isTransmitting);
+        rxLed.classList.toggle('rx-active', receiving);
 
-            txLed.classList.add('tx-active');
-            rxLed.classList.remove('rx-active');
+        if (isTransmitting) {
             pttRing.className = 'ptt-outer-ring transmitting';
             pttButton.className = 'ptt-button pressed';
             pttLabel.textContent = 'TRANSMITTING';
-            pttHint.textContent = 'Release to stop';
-
-            channelStatusText.className = 'state-badge state-tx';
-            channelStatusText.textContent = 'TX [LIVE MIC]';
-            speakerNotice.textContent = 'TRANSMITTING LIVE';
+            pttHint.textContent = receiving ? 'Live with incoming audio' : 'Release to stop';
         } else {
-            // Another client is transmitting.
-            isTransmitting = false;
-            isFloorBusy = true;
-            webrtcManager.setMicrophoneEnabled(false);
-
-            txLed.classList.remove('tx-active');
-            rxLed.classList.add('rx-active');
-            pttRing.className = 'ptt-outer-ring receiving';
-            pttButton.className = 'ptt-button disabled';
-            pttLabel.textContent = 'BUSY';
-            pttHint.textContent = `${speakerName} talking`;
-
-            channelStatusText.className = 'state-badge state-rx';
-            channelStatusText.textContent = 'RX [RECEIVING]';
-            speakerNotice.textContent = `INCOMING: ${speakerName.toUpperCase()}`;
-        }
-        updatePeersUI();
-    }
-
-    function clearFloorState() {
-        const wasSpeaking = isTransmitting;
-        isTransmitting = false;
-        isFloorBusy = false;
-        activeSpeakerId = null;
-
-        webrtcManager.setMicrophoneEnabled(false);
-
-        if (wasSpeaking) {
-            window.tacticalAudioFX.playRogerBeep();
+            pttRing.className = receiving ? 'ptt-outer-ring receiving' : 'ptt-outer-ring';
+            pttButton.className = 'ptt-button';
+            pttLabel.textContent = 'HOLD TALK';
+            pttHint.textContent = receiving ? `${remoteNames.join(', ')} talking` : 'Push To Transmit';
         }
 
-        txLed.classList.remove('tx-active');
-        rxLed.classList.remove('rx-active');
-        pttRing.className = 'ptt-outer-ring';
-        pttButton.className = 'ptt-button';
-        pttLabel.textContent = 'HOLD TALK';
-        pttHint.textContent = 'Push To Transmit';
-
-        channelStatusText.className = 'state-badge state-standby';
-        channelStatusText.textContent = 'STANDBY [IDLE]';
-        speakerNotice.textContent = 'ALL CLEAR';
-
+        channelStatusText.className = `state-badge ${isTransmitting ? 'state-tx' : receiving ? 'state-rx' : 'state-standby'}`;
+        channelStatusText.textContent = isTransmitting ? 'TX [LIVE MIC]' : receiving ? 'RX [RECEIVING]' : 'STANDBY [IDLE]';
+        speakerNotice.textContent = isTransmitting && receiving ? 'TRANSMITTING + RECEIVING' : isTransmitting ? 'TRANSMITTING LIVE' : receiving ? `INCOMING: ${remoteNames.join(', ').toUpperCase()}` : 'ALL CLEAR';
         updatePeersUI();
     }
 
@@ -359,24 +312,22 @@
 
         // Add others
         knownPeers.forEach((name, id) => {
-            peersList.appendChild(createPeerChip(name, { talking: activeSpeakerId === id }));
+            peersList.appendChild(createPeerChip(name, { talking: activeSpeakerIds.has(id) }));
         });
     }
 
     // Push-To-Talk Actions
     function startTransmit() {
         if (isTransmitting) return;
-        if (isFloorBusy) {
-            showToast("Channel Busy: Wait for operator to finish");
-            window.tacticalAudioFX.playBusyAlert();
-            return;
-        }
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             showToast("Not connected to channel relay");
             return;
         }
 
-        // Request floor lock from server
+        isTransmitting = true;
+        activeSpeakerIds.add(clientId);
+        window.tacticalAudioFX.playPttKey();
+        updateAudioState();
         ws.send(JSON.stringify({ type: 'talk_request' }));
     }
 
@@ -385,17 +336,20 @@
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'talk_release' }));
         }
+        activeSpeakerIds.delete(clientId);
+        isTransmitting = false;
+        window.tacticalAudioFX.playRogerBeep();
+        updateAudioState();
     }
 
     function resetPttState() {
         isTransmitting = false;
-        isFloorBusy = false;
-        activeSpeakerId = null;
+        activeSpeakerIds.clear();
         if (webrtcManager) {
             webrtcManager.setMicrophoneEnabled(false);
         }
         if (webrtcManager) {
-            clearFloorState();
+            updateAudioState();
         }
     }
 
@@ -485,7 +439,7 @@
             ctx.clearRect(0, 0, w, h);
 
             let activityLevel = 0;
-            if (webrtcManager && (isTransmitting || isFloorBusy)) {
+            if (webrtcManager && (isTransmitting || activeSpeakerIds.size > 1)) {
                 activityLevel = webrtcManager.getAudioVisualLevel() / 255;
             }
 
@@ -496,7 +450,7 @@
             let strokeColor = 'rgba(57, 255, 150, 0.4)';
             if (isTransmitting) {
                 strokeColor = '#ef4444';
-            } else if (isFloorBusy) {
+            } else if (activeSpeakerIds.size > 1) {
                 strokeColor = '#38bdf8';
             }
 
