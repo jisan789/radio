@@ -89,7 +89,7 @@
         }
         localVideo.srcObject = webrtcManager.localStream;
         localVideo.muted = true;
-        cameraState(false);
+        cameraState(true);
         connectWebSocket();
     }
 

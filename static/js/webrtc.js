@@ -183,7 +183,7 @@ class WebRTCManager {
                     fullscreenButton.type = 'button';
                     fullscreenButton.title = 'Watch operator fullscreen';
                     fullscreenButton.setAttribute('aria-label', 'Watch operator fullscreen');
-                    fullscreenButton.innerHTML = '&#x26F6;';
+                    fullscreenButton.innerHTML = '<i class="bx bx-expand-alt"></i>';
                     tile.appendChild(fullscreenButton);
                     document.getElementById('remoteVideos').appendChild(tile);
                 }
