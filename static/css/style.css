@@ -525,6 +525,7 @@ body {
 
 .video-tile:fullscreen video {
     object-fit: contain;
+    background: #fff8d6;
 }
 
 .remote-videos {
