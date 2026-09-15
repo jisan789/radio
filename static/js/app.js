@@ -273,19 +273,43 @@
     function updatePeersUI() {
         lcdPeersCount.textContent = `${knownPeers.size + 1} ONLINE`;
         peersList.innerHTML = '';
+        const participantCount = knownPeers.size + 1;
+        peersList.className = `peers-list ${participantCount <= 2 ? 'single-call' : 'group-call'}`;
+
+        function getAvatarUrl(name) {
+            const seed = encodeURIComponent(name.trim() || 'Operator');
+            return `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+        }
 
         function createPeerChip(name, options = {}) {
             const chip = document.createElement('div');
-            chip.className = `peer-chip ${options.self ? 'you ' : ''}${options.talking ? 'talking' : ''}`.trim();
+            const featured = options.talking || (participantCount <= 2 && !options.self);
+            chip.className = `peer-chip ${options.self ? 'you ' : ''}${options.talking ? 'talking ' : ''}${featured ? 'featured' : ''}`.trim();
 
-            const pulse = document.createElement('span');
-            pulse.className = 'peer-pulse';
+            const avatar = document.createElement('img');
+            avatar.className = 'peer-avatar';
+            avatar.src = getAvatarUrl(name);
+            avatar.alt = `${name} avatar`;
+            avatar.loading = 'lazy';
+            avatar.referrerPolicy = 'no-referrer';
+            avatar.addEventListener('error', () => {
+                avatar.src = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=1d5cff&fontFamily=Arial`;
+            }, { once: true });
 
-            const label = document.createElement('span');
-            label.textContent = options.self ? `${name} (Current)` : name;
+            const details = document.createElement('div');
+            details.className = 'peer-details';
 
-            chip.appendChild(pulse);
-            chip.appendChild(label);
+            const label = document.createElement('strong');
+            label.textContent = options.self ? `${name} (YOU)` : name;
+
+            const status = document.createElement('span');
+            status.className = 'peer-status';
+            status.textContent = options.talking ? 'Speaking...' : options.self ? 'Ready' : 'Listening';
+
+            details.appendChild(label);
+            details.appendChild(status);
+            chip.appendChild(avatar);
+            chip.appendChild(details);
             return chip;
         }
 

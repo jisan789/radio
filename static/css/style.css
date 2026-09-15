@@ -566,16 +566,65 @@ body {
 }
 
 .peer-chip {
+    flex: 1 1 140px;
+    min-width: 0;
     background: #1a222e;
-    border: 1px solid #334155;
-    color: #94a3b8;
+    border: 2px solid #334155;
+    color: #e2e8f0;
     font-size: 0.75rem;
-    padding: 4px 10px;
-    border-radius: 999px;
+    min-height: 58px;
+    padding: 7px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     gap: 6px;
     font-family: var(--font-mono);
+}
+
+.peer-avatar {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #b6e3f4;
+    border: 2px solid #64748b;
+}
+
+.peer-details {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow: hidden;
+}
+
+.peer-details strong,
+.peer-status {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.peer-status {
+    color: #94a3b8;
+    font-size: 0.65rem;
+}
+
+.peer-chip.featured {
+    min-height: 104px;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    flex-basis: 170px;
+    gap: 5px;
+}
+
+.peer-chip.featured .peer-avatar {
+    width: 72px;
+    height: 72px;
+    flex-basis: 72px;
+    border-width: 3px;
 }
 
 .peer-chip.you {
@@ -588,6 +637,36 @@ body {
     color: #fca5a5;
     background: rgba(239, 68, 68, 0.15);
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.peer-chip.talking .peer-avatar {
+    border-color: #39ff96;
+    box-shadow: 0 0 0 3px rgba(57, 255, 150, 0.2), 0 0 16px rgba(57, 255, 150, 0.4);
+}
+
+.peer-chip.talking .peer-status {
+    color: #39ff96;
+}
+
+.peers-list.single-call {
+    justify-content: center;
+}
+
+.peers-list.group-call {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+}
+
+.peers-list.single-call .peer-chip {
+    min-height: 150px;
+    flex: 1 1 100%;
+    max-width: 260px;
+}
+
+.peers-list.single-call .peer-avatar {
+    width: 92px;
+    height: 92px;
+    flex-basis: 92px;
 }
 
 .peer-pulse {
