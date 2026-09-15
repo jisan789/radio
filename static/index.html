@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
@@ -24,19 +22,19 @@
                 <input id="usernameInput" maxlength="20" autocomplete="name" placeholder="e.g. Operator-848">
                 <label for="roomInput">Room</label>
                 <input id="roomInput" value="ALPHA-1" readonly>
-                <button id="btnJoin" class="primary-button" type="button">Join call <i class="bx bx-right-arrow-alt"></i></button>
+                <button id="btnJoin" class="primary-button" type="button">Join call <span>→</span></button>
             </div>
             <p class="privacy-note">Microphone access is required. Camera stays off until you choose it.</p>
         </section>
 
         <section id="deviceView" class="call-screen hidden">
             <header class="call-header">
-                <button class="icon-button" id="btnMinimize" type="button" aria-label="Minimize call"><i class="bx bx-chevron-down"></i></button>
+                <button class="icon-button" id="btnMinimize" type="button" aria-label="Minimize call">⌄</button>
                 <div class="call-heading">
                     <h1 id="callRoom">ALPHA-1</h1>
                     <p id="callTitle">Group voice call</p>
                 </div>
-                <button class="icon-button" id="btnMore" type="button" aria-label="More options"><i class="bx bx-dots-vertical-rounded"></i></button>
+                <button class="icon-button" id="btnMore" type="button" aria-label="More options">⋮</button>
             </header>
 
             <div class="call-status">
@@ -57,13 +55,13 @@
             <section id="videoPanel" class="video-panel hidden" aria-label="Video call">
                 <div class="video-panel-header">
                     <span>VIDEO</span>
-                    <button id="btnCamera" class="small-control active" type="button" aria-pressed="true"><i class="bx bx-video"></i> Camera on</button>
+                    <button id="btnCamera" class="small-control active" type="button" aria-pressed="true">Camera on</button>
                 </div>
                 <div class="video-grid">
                     <div class="video-tile local-video-tile">
                         <video id="localVideo" autoplay muted playsinline></video>
                         <span class="video-name">YOU</span>
-                        <button class="fullscreen-button" type="button" aria-label="Watch your video fullscreen"><i class="bx bx-expand-alt"></i></button>
+                        <button class="fullscreen-button" type="button" aria-label="Watch your video fullscreen">↗</button>
                     </div>
                     <div id="remoteVideos" class="remote-videos"></div>
                 </div>
@@ -71,32 +69,32 @@
 
             <nav class="call-controls" aria-label="Call controls">
                 <button id="btnSpeaker" class="round-control active" type="button" aria-pressed="true">
-                    <span class="control-icon"><i class="fa-solid fa-volume-high"></i></span><span>Speaker</span>
+                    <span class="control-icon">◖))</span><span>Speaker</span>
                 </button>
                 <button id="btnCameraToggle" class="round-control" type="button">
-                    <span class="control-icon"><i class="fa-solid fa-video"></i></span><span>Camera</span>
+                    <span class="control-icon">▣</span><span>Camera</span>
                 </button>
                 <button id="btnMembers" class="round-control" type="button">
-                    <span class="control-icon"><i class="fa-solid fa-user-group"></i></span><span>Members</span>
+                    <span class="control-icon">◉◉</span><span>Members</span>
                 </button>
                 <button id="btnMoreCall" class="round-control" type="button">
-                    <span class="control-icon"><i class="fa-solid fa-ellipsis"></i></span><span>More</span>
+                    <span class="control-icon">•••</span><span>More</span>
                 </button>
             </nav>
 
             <div class="talk-area">
                 <button id="btnPttLock" class="lock-control" type="button" aria-pressed="false">
-                    <span class="lock-symbol"><i class="bx bx-lock-alt"></i></span><span>Lock PTT</span>
+                    <span class="lock-symbol">♙</span><span>Lock PTT</span>
                 </button>
                 <div id="pttRing" class="ptt-ring">
                     <button id="pttButton" class="ptt-button" type="button">
-                        <span class="mic-symbol"><i class="fa-solid fa-microphone"></i></span>
+                        <span class="mic-symbol"></span>
                         <strong id="pttLabel">HOLD TO TALK</strong>
                         <small id="pttHint">PUSH TO TRANSMIT</small>
                     </button>
                 </div>
                 <button id="btnLeave" class="leave-control" type="button">
-                    <span class="hangup-symbol"><i class="fa-solid fa-phone-slash"></i></span><span>Leave</span>
+                    <span class="hangup-symbol">⌕</span><span>Leave</span>
                 </button>
             </div>
             <label class="spacebar-option"><input id="chkSpacebar" type="checkbox" checked> Spacebar to talk</label>
