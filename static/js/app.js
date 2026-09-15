@@ -1,335 +1,209 @@
-/**
- * Main Application Controller for Web Walkie-Talkie.
- * Handles:
- * - Room Join/Leave UI state
- * - WebSocket connection and message routing
- * - Tactical PTT pointer events (mouse/touch) & Spacebar shortcuts
- * - Independent push-to-talk state for every connected operator
- * - Canvas audio visualizer animation loop
- */
-
 (() => {
-    // DOM Elements
-    const lobbyView = document.getElementById('lobbyView');
-    const deviceView = document.getElementById('deviceView');
-    const usernameInput = document.getElementById('usernameInput');
-    const roomInput = document.getElementById('roomInput');
-    const btnJoin = document.getElementById('btnJoin');
-    const btnLeave = document.getElementById('btnLeave');
-    const btnPttLock = document.getElementById('btnPttLock');
-    const btnCamera = document.getElementById('btnCamera');
-    const videoPanel = document.getElementById('videoPanel');
-    const localVideo = document.getElementById('localVideo');
-    const pttButton = document.getElementById('pttButton');
-    const pttRing = document.getElementById('pttRing');
-    const pttLabel = document.getElementById('pttLabel');
-    const pttHint = document.getElementById('pttHint');
-    const txLed = document.getElementById('txLed');
-    const rxLed = document.getElementById('rxLed');
-    const connectionStatus = document.getElementById('connectionStatus');
-    const lcdCallsign = document.getElementById('lcdCallsign');
-    const lcdPeersCount = document.getElementById('lcdPeersCount');
-    const lcdRoom = document.getElementById('lcdRoom');
-    const lcdFreq = document.getElementById('lcdFreq');
-    const channelStatusText = document.getElementById('channelStatusText');
-    const speakerNotice = document.getElementById('speakerNotice');
-    const peersList = document.getElementById('peersList');
-    const toast = document.getElementById('toast');
-    const audioCanvas = document.getElementById('audioCanvas');
-    const chkSpacebar = document.getElementById('chkSpacebar');
+    const $ = id => document.getElementById(id);
+    const lobbyView = $('lobbyView');
+    const deviceView = $('deviceView');
+    const usernameInput = $('usernameInput');
+    const roomInput = $('roomInput');
+    const btnJoin = $('btnJoin');
+    const btnLeave = $('btnLeave');
+    const btnPttLock = $('btnPttLock');
+    const btnCamera = $('btnCamera');
+    const btnCameraToggle = $('btnCameraToggle');
+    const btnSpeaker = $('btnSpeaker');
+    const btnMembers = $('btnMembers');
+    const videoPanel = $('videoPanel');
+    const localVideo = $('localVideo');
+    const pttButton = $('pttButton');
+    const pttRing = $('pttRing');
+    const pttLabel = $('pttLabel');
+    const pttHint = $('pttHint');
+    const callRoom = $('callRoom');
+    const callTitle = $('callTitle');
+    const connectionStatus = $('connectionStatus');
+    const peersCount = $('peersCount');
+    const speakerNotice = $('speakerNotice');
+    const peersList = $('peersList');
+    const toast = $('toast');
+    const audioCanvas = $('audioCanvas');
+    const chkSpacebar = $('chkSpacebar');
 
-    // State Variables
-    let clientId = 'usr_' + Math.random().toString(36).substring(2, 9);
-    let username = 'Operator';
-    let currentRoom = '';
+    let clientId = 'usr_' + Math.random().toString(36).slice(2, 9);
+    let username = localStorage.getItem('walkyTalkyUsername') || `Operator-${Math.floor(100 + Math.random() * 900)}`;
+    let currentRoom = 'ALPHA-1';
     let ws = null;
     let webrtcManager = null;
     let isTransmitting = false;
     let isPttLocked = false;
-    const activeSpeakerIds = new Set();
+    let isSpeakerOn = true;
     let spaceKeyDown = false;
-    let knownPeers = new Map(); // client_id -> username
+    const activeSpeakerIds = new Set();
+    const knownPeers = new Map();
 
-    // Frequencies mapping for retro feel
-    const mockFrequencies = [
-        "146.520 MHz", "462.562 MHz", "446.006 MHz", "151.625 MHz", "467.637 MHz"
-    ];
-    const defaultRoom = 'ALPHA-1';
-    const savedUsername = localStorage.getItem('walkyTalkyUsername');
+    usernameInput.value = username;
+    roomInput.value = currentRoom;
 
-    function getAppBasePath() {
+    function basePath() {
         const path = window.location.pathname;
-        if (path.endsWith('/')) {
-            return path.slice(0, -1);
-        }
-        const lastSlash = path.lastIndexOf('/');
-        return lastSlash > 0 ? path.slice(0, lastSlash) : '';
+        if (path.endsWith('/')) return path.slice(0, -1);
+        const slash = path.lastIndexOf('/');
+        return slash > 0 ? path.slice(0, slash) : '';
     }
 
-    // Helper: Show toast notification
-    function showToast(msg) {
-        toast.textContent = msg;
+    function showToast(message) {
+        toast.textContent = message;
         toast.classList.add('show');
-        clearTimeout(toast._timeout);
-        toast._timeout = setTimeout(() => {
-            toast.classList.remove('show');
-        }, 2600);
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.remove('show'), 2600);
     }
 
-    function getMicrophoneErrorMessage(error) {
-        if (!error) {
-            return "Microphone access failed. Check browser site settings and try again.";
-        }
-
-        switch (error.name) {
-            case "InsecureContext":
-                return "Microphone permission will not appear unless the app is opened over HTTPS. Enable SSL on the hosted site, then reload.";
-            case "NotAllowedError":
-            case "PermissionDeniedError":
-                return "Microphone access is blocked for this site. Open browser site settings, allow Microphone, then reload.";
-            case "NotFoundError":
-            case "DevicesNotFoundError":
-                return "No microphone was found on this device.";
-            case "NotReadableError":
-            case "TrackStartError":
-                return "The microphone is already in use by another app or browser tab.";
-            case "OverconstrainedError":
-                return "The selected microphone does not support the requested audio settings.";
-            case "UnsupportedBrowser":
-                return "This browser does not support microphone access. Use a modern Chrome, Edge, Firefox, or Safari browser.";
-            default:
-                return `Microphone access failed: ${error.message}`;
-        }
+    function avatarUrl(name) {
+        return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
     }
 
-    usernameInput.value = savedUsername || 'Operator-' + Math.floor(100 + Math.random() * 900);
-    roomInput.value = defaultRoom;
-    usernameInput.addEventListener('input', () => {
-        localStorage.setItem('walkyTalkyUsername', usernameInput.value.trim());
-    });
+    function cameraState(enabled) {
+        const available = webrtcManager && webrtcManager.hasCamera();
+        const on = Boolean(enabled && available);
+        videoPanel.classList.toggle('hidden', !on);
+        btnCamera.setAttribute('aria-pressed', String(on));
+        btnCamera.textContent = on ? 'Camera on' : 'Camera off';
+        btnCameraToggle.classList.toggle('active', on);
+        if (available) webrtcManager.setCameraEnabled(on);
+    }
 
-    // Join Channel
     async function joinRoom() {
-        const userVal = usernameInput.value.trim();
-        const roomVal = defaultRoom;
-
-        if (!userVal) {
+        const enteredName = usernameInput.value.trim();
+        if (!enteredName) {
             usernameInput.focus();
-            showToast("Please enter an Operator Callsign");
+            showToast('Enter your name to join');
             return;
         }
-        if (!roomVal) {
-            roomInput.focus();
-            showToast("Please enter or select a Channel");
-            return;
-        }
-
-        username = userVal;
-        currentRoom = roomVal;
+        username = enteredName;
         localStorage.setItem('walkyTalkyUsername', username);
-
-        // Initialize WebRTC
-        webrtcManager = new WebRTCManager((signalData) => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(signalData));
-            }
+        webrtcManager = new WebRTCManager(signal => {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(signal));
         });
 
-        const micGranted = await webrtcManager.initMicrophone();
-        if (!micGranted) {
-            alert(getMicrophoneErrorMessage(webrtcManager.lastMicrophoneError));
+        if (!await webrtcManager.initMicrophone()) {
+            showToast(webrtcManager.lastMicrophoneError?.message || 'Microphone access is required');
             return;
         }
-
         localVideo.srcObject = webrtcManager.localStream;
         localVideo.muted = true;
-        videoPanel.classList.toggle('hidden', !webrtcManager.hasCamera());
-        btnCamera.setAttribute('aria-pressed', 'true');
-        btnCamera.textContent = 'CAMERA ON';
-
+        cameraState(false);
         connectWebSocket();
     }
 
     function connectWebSocket() {
-        const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${proto}//${window.location.host}${getAppBasePath()}/ws/${encodeURIComponent(currentRoom)}/${encodeURIComponent(clientId)}?username=${encodeURIComponent(username)}`;
-
-        ws = new WebSocket(wsUrl);
-
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const url = `${protocol}//${window.location.host}${basePath()}/ws/${encodeURIComponent(currentRoom)}/${encodeURIComponent(clientId)}?username=${encodeURIComponent(username)}`;
+        ws = new WebSocket(url);
         ws.onopen = () => {
-            showToast(`Connected to Channel [${currentRoom}]`);
-            // Transition UI
             lobbyView.classList.add('hidden');
             deviceView.classList.remove('hidden');
-
-            lcdCallsign.textContent = `CALLSIGN: ${username.toUpperCase()}`;
-            lcdRoom.textContent = currentRoom;
-            lcdFreq.textContent = mockFrequencies[Math.floor(Math.random() * mockFrequencies.length)];
-            connectionStatus.textContent = 'LINK ACTIVE';
-            connectionStatus.style.color = '#38bdf8';
-
+            callRoom.textContent = currentRoom;
+            updateHeader();
+            connectionStatus.textContent = 'Link active';
             startVisualizer();
+            showToast('Joined the call');
         };
-
-        ws.onmessage = async (event) => {
-            const msg = JSON.parse(event.data);
-            handleServerMessage(msg);
-        };
-
+        ws.onmessage = event => handleServerMessage(JSON.parse(event.data));
         ws.onclose = () => {
-            connectionStatus.textContent = 'DISCONNECTED';
-            connectionStatus.style.color = '#ef4444';
+            connectionStatus.textContent = 'Reconnecting';
             resetPttState();
         };
-
-        ws.onerror = (err) => {
-            console.error("WebSocket Error:", err);
-            showToast("Connection Error with Signaling Relay");
-        };
+        ws.onerror = () => showToast('Connection problem');
     }
 
-    async function handleServerMessage(msg) {
-        switch (msg.type) {
+    async function handleServerMessage(message) {
+        switch (message.type) {
             case 'room_state':
                 knownPeers.clear();
-                msg.peers.forEach(p => {
-                    if (p.client_id !== clientId) {
-                        knownPeers.set(p.client_id, p.username);
-                        // Initiate WebRTC offer with established peers
-                        webrtcManager.initiateCall(p.client_id);
+                message.peers.forEach(peer => {
+                    if (peer.client_id !== clientId) {
+                        knownPeers.set(peer.client_id, peer.username);
+                        webrtcManager.initiateCall(peer.client_id);
                     }
                 });
-                updatePeersUI();
                 activeSpeakerIds.clear();
-                (msg.active_speaker_ids || []).forEach(id => activeSpeakerIds.add(id));
+                (message.active_speaker_ids || []).forEach(id => activeSpeakerIds.add(id));
                 updateAudioState();
                 break;
-
             case 'peer_joined':
-                knownPeers.set(msg.peer.client_id, msg.peer.username);
+                knownPeers.set(message.peer.client_id, message.peer.username);
+                updateHeader();
                 updatePeersUI();
-                showToast(`${msg.peer.username} tuned in`);
                 break;
-
             case 'peer_left':
-                knownPeers.delete(msg.client_id);
-                webrtcManager.closePeerConnection(msg.client_id);
-                updatePeersUI();
-                showToast(`${msg.username} left channel`);
+                knownPeers.delete(message.client_id);
+                activeSpeakerIds.delete(message.client_id);
+                webrtcManager.closePeerConnection(message.client_id);
+                updateHeader();
+                updateAudioState();
                 break;
-
             case 'speaker_started':
-                activeSpeakerIds.add(msg.speaker_id);
+                activeSpeakerIds.add(message.speaker_id);
                 updateAudioState();
                 break;
-
             case 'speaker_stopped':
-                activeSpeakerIds.delete(msg.speaker_id || msg.client_id);
+                activeSpeakerIds.delete(message.speaker_id || message.client_id);
                 updateAudioState();
                 break;
-
-            // WebRTC Signaling
-            case 'signal_offer':
-                await webrtcManager.handleSignalOffer(msg.from_id, msg.payload);
-                break;
-
-            case 'signal_answer':
-                await webrtcManager.handleSignalAnswer(msg.from_id, msg.payload);
-                break;
-
-            case 'signal_candidate':
-                await webrtcManager.handleSignalCandidate(msg.from_id, msg.payload);
-                break;
+            case 'signal_offer': await webrtcManager.handleSignalOffer(message.from_id, message.payload); break;
+            case 'signal_answer': await webrtcManager.handleSignalAnswer(message.from_id, message.payload); break;
+            case 'signal_candidate': await webrtcManager.handleSignalCandidate(message.from_id, message.payload); break;
         }
+    }
+
+    function updateHeader() {
+        const count = knownPeers.size + 1;
+        peersCount.textContent = `${count} online`;
+        callTitle.textContent = count === 2 ? 'Private voice call' : 'Group voice call';
     }
 
     function updateAudioState() {
-        const remoteSpeakers = [...activeSpeakerIds].filter(id => id !== clientId);
-        const remoteNames = remoteSpeakers.map(id => knownPeers.get(id)).filter(Boolean);
-        const receiving = remoteSpeakers.length > 0;
-
+        const remoteNames = [...activeSpeakerIds].filter(id => id !== clientId).map(id => knownPeers.get(id)).filter(Boolean);
+        const receiving = remoteNames.length > 0;
         if (webrtcManager) webrtcManager.setMicrophoneEnabled(isTransmitting);
-        txLed.classList.toggle('tx-active', isTransmitting);
-        rxLed.classList.toggle('rx-active', receiving);
-
-        if (isTransmitting) {
-            pttRing.className = 'ptt-outer-ring transmitting';
-            pttButton.className = 'ptt-button pressed';
-            pttLabel.textContent = 'TRANSMITTING';
-            pttHint.textContent = receiving ? 'Live with incoming audio' : 'Release to stop';
-        } else {
-            pttRing.className = receiving ? 'ptt-outer-ring receiving' : 'ptt-outer-ring';
-            pttButton.className = 'ptt-button';
-            pttLabel.textContent = 'HOLD TALK';
-            pttHint.textContent = receiving ? `${remoteNames.join(', ')} talking` : 'Push To Transmit';
-        }
-
-        channelStatusText.className = `state-badge ${isTransmitting ? 'state-tx' : receiving ? 'state-rx' : 'state-standby'}`;
-        channelStatusText.textContent = isTransmitting ? 'TX [LIVE MIC]' : receiving ? 'RX [RECEIVING]' : 'STANDBY [IDLE]';
-        speakerNotice.textContent = isTransmitting && receiving ? 'TRANSMITTING + RECEIVING' : isTransmitting ? 'TRANSMITTING LIVE' : receiving ? `INCOMING: ${remoteNames.join(', ').toUpperCase()}` : 'ALL CLEAR';
+        pttRing.className = `ptt-ring${isTransmitting ? ' transmitting' : ''}`;
+        pttButton.className = `ptt-button${isTransmitting ? ' pressed' : ''}`;
+        pttLabel.textContent = isTransmitting ? 'SPEAKING' : 'HOLD TO TALK';
+        pttHint.textContent = isTransmitting ? 'RELEASE TO STOP' : 'PUSH TO TRANSMIT';
+        speakerNotice.textContent = isTransmitting ? 'You are speaking...' : receiving ? `${remoteNames[0]} is speaking...` : 'Ready to talk';
         updatePeersUI();
     }
 
     function updatePeersUI() {
-        lcdPeersCount.textContent = `${knownPeers.size + 1} ONLINE`;
+        const count = knownPeers.size + 1;
+        peersList.className = `peers-list ${count <= 2 ? 'single-call' : 'group-call'}`;
         peersList.innerHTML = '';
-        const participantCount = knownPeers.size + 1;
-        peersList.className = `peers-list ${participantCount <= 2 ? 'single-call' : 'group-call'}`;
-
-        function getAvatarUrl(name) {
-            const seed = encodeURIComponent(name.trim() || 'Operator');
-            return `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
-        }
-
-        function createPeerChip(name, options = {}) {
-            const chip = document.createElement('div');
-            const featured = options.talking || (participantCount <= 2 && !options.self);
-            chip.className = `peer-chip ${options.self ? 'you ' : ''}${options.talking ? 'talking ' : ''}${featured ? 'featured' : ''}`.trim();
-
+        const addPeer = (name, id, self = false) => {
+            const talking = self ? isTransmitting : activeSpeakerIds.has(id);
+            const chip = document.createElement('article');
+            chip.className = `peer-chip${talking ? ' talking' : ''}${self ? ' you' : ''}`;
             const avatar = document.createElement('img');
             avatar.className = 'peer-avatar';
-            avatar.src = getAvatarUrl(name);
+            avatar.src = avatarUrl(name);
             avatar.alt = `${name} avatar`;
             avatar.loading = 'lazy';
             avatar.referrerPolicy = 'no-referrer';
-            avatar.addEventListener('error', () => {
-                avatar.src = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=1d5cff&fontFamily=Arial`;
-            }, { once: true });
-
             const details = document.createElement('div');
             details.className = 'peer-details';
-
             const label = document.createElement('strong');
-            label.textContent = options.self ? `${name} (YOU)` : name;
-
+            label.textContent = self ? `${name} (YOU)` : name;
             const status = document.createElement('span');
             status.className = 'peer-status';
-            status.textContent = options.talking ? 'Speaking...' : options.self ? 'Ready' : 'Listening';
-
-            details.appendChild(label);
-            details.appendChild(status);
-            chip.appendChild(avatar);
-            chip.appendChild(details);
-            return chip;
-        }
-
-        // Add self
-        peersList.appendChild(createPeerChip(username, { self: true, talking: isTransmitting }));
-
-        // Add others
-        knownPeers.forEach((name, id) => {
-            peersList.appendChild(createPeerChip(name, { talking: activeSpeakerIds.has(id) }));
-        });
+            status.textContent = talking ? 'Speaking...' : self ? 'Ready' : 'Listening';
+            details.append(label, status);
+            chip.append(avatar, details);
+            peersList.appendChild(chip);
+        };
+        knownPeers.forEach((name, id) => { if (activeSpeakerIds.has(id)) addPeer(name, id); });
+        addPeer(username, clientId, true);
+        knownPeers.forEach((name, id) => { if (!activeSpeakerIds.has(id)) addPeer(name, id); });
     }
 
-    // Push-To-Talk Actions
     function startTransmit() {
-        if (isTransmitting) return;
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            showToast("Not connected to channel relay");
-            return;
-        }
-
+        if (isTransmitting || !ws || ws.readyState !== WebSocket.OPEN) return;
         isTransmitting = true;
         activeSpeakerIds.add(clientId);
         updateAudioState();
@@ -338,224 +212,105 @@
 
     function stopTransmit() {
         if (!isTransmitting) return;
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'talk_release' }));
-        }
-        activeSpeakerIds.delete(clientId);
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'talk_release' }));
         isTransmitting = false;
+        activeSpeakerIds.delete(clientId);
         updateAudioState();
-    }
-
-    function togglePttLock() {
-        isPttLocked = !isPttLocked;
-        btnPttLock.classList.toggle('active', isPttLocked);
-        btnPttLock.setAttribute('aria-pressed', String(isPttLocked));
-        btnPttLock.querySelector('.lock-icon').textContent = isPttLocked ? '\uD83D\uDD13' : '\uD83D\uDD12';
-        btnPttLock.title = isPttLocked
-            ? 'PTT lock active: click PTT to start and click again to stop'
-            : 'Click PTT once to transmit and again to stop';
-
-        if (!isPttLocked && isTransmitting) {
-            stopTransmit();
-        }
     }
 
     function resetPttState() {
         isTransmitting = false;
         activeSpeakerIds.clear();
-        if (webrtcManager) {
-            webrtcManager.setMicrophoneEnabled(false);
-        }
-        if (webrtcManager) {
-            updateAudioState();
-        }
+        updateAudioState();
     }
 
-    // Touch & Pointer Event Listeners for PTT button
-    pttButton.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        try {
-            pttButton.setPointerCapture(e.pointerId);
-        } catch (err) {}
-        if (isPttLocked) {
-            if (isTransmitting) {
-                stopTransmit();
-            } else {
-                startTransmit();
-            }
-            return;
-        }
-        startTransmit();
+    function toggleLock() {
+        isPttLocked = !isPttLocked;
+        btnPttLock.classList.toggle('active', isPttLocked);
+        btnPttLock.setAttribute('aria-pressed', String(isPttLocked));
+        if (!isPttLocked && isTransmitting) stopTransmit();
+    }
+
+    pttButton.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        if (isPttLocked) isTransmitting ? stopTransmit() : startTransmit();
+        else startTransmit();
     });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => pttButton.addEventListener(type, event => {
+        event.preventDefault();
+        if (!isPttLocked) stopTransmit();
+    }));
+    btnPttLock.addEventListener('click', toggleLock);
+    btnJoin.addEventListener('click', joinRoom);
+    usernameInput.addEventListener('input', () => localStorage.setItem('walkyTalkyUsername', usernameInput.value.trim()));
+    usernameInput.addEventListener('keydown', event => { if (event.key === 'Enter') joinRoom(); });
 
-    const handlePointerRelease = (e) => {
-        e.preventDefault();
-        if (isPttLocked) return;
-        stopTransmit();
-    };
-
-    pttButton.addEventListener('pointerup', handlePointerRelease);
-    pttButton.addEventListener('pointercancel', handlePointerRelease);
-    pttButton.addEventListener('pointerleave', (e) => {
-        // Only stop if pointer wasn't captured
-        if (!isPttLocked && (!pttButton.hasPointerCapture || !pttButton.hasPointerCapture(e.pointerId))) {
-            stopTransmit();
-        }
+    btnCameraToggle.addEventListener('click', () => cameraState(videoPanel.classList.contains('hidden')));
+    btnCamera.addEventListener('click', () => cameraState(videoPanel.classList.contains('hidden')));
+    btnSpeaker.addEventListener('click', () => {
+        isSpeakerOn = !isSpeakerOn;
+        btnSpeaker.classList.toggle('active', isSpeakerOn);
+        btnSpeaker.setAttribute('aria-pressed', String(isSpeakerOn));
+        webrtcManager?.setRemoteAudioEnabled(isSpeakerOn);
     });
-
-    btnPttLock.addEventListener('click', togglePttLock);
-
-    // Spacebar Keyboard Push-To-Talk
-    window.addEventListener('keydown', (e) => {
-        if (!chkSpacebar.checked) return;
-        if (e.code === 'Space' && !spaceKeyDown && !deviceView.classList.contains('hidden')) {
-            const activeTag = document.activeElement.tagName.toLowerCase();
-            if (activeTag === 'input' || activeTag === 'textarea') return;
-            e.preventDefault();
-            spaceKeyDown = true;
-            if (isPttLocked) {
-                if (isTransmitting) stopTransmit();
-                else startTransmit();
-            } else {
-                startTransmit();
-            }
-        }
-    });
-
-    window.addEventListener('keyup', (e) => {
-        if (e.code === 'Space' && spaceKeyDown) {
-            e.preventDefault();
-            spaceKeyDown = false;
-            if (!isPttLocked) stopTransmit();
-        }
-    });
-
-    // Disengage / Leave Channel
+    btnMembers.addEventListener('click', () => peersList.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    $('btnMoreCall').addEventListener('click', () => showToast('Audio call controls are ready'));
+    $('btnMore').addEventListener('click', () => showToast('Audio-first call · video is optional'));
+    $('btnMinimize').addEventListener('click', () => showToast('Keep this tab open to stay connected'));
     btnLeave.addEventListener('click', () => {
-        if (ws) {
-            ws.close();
-        }
-        if (webrtcManager) {
-            webrtcManager.cleanupAll();
-        }
+        if (ws) ws.close();
+        webrtcManager?.cleanupAll();
         deviceView.classList.add('hidden');
         lobbyView.classList.remove('hidden');
-        showToast("Disengaged from channel");
+        cameraState(false);
     });
-
-    // Join Button Event
-    btnJoin.addEventListener('click', joinRoom);
-    btnCamera.addEventListener('click', () => {
-        if (!webrtcManager || !webrtcManager.hasCamera()) {
-            showToast('Camera is not available');
-            return;
-        }
-        const cameraOn = btnCamera.getAttribute('aria-pressed') === 'true';
-        webrtcManager.setCameraEnabled(!cameraOn);
-        btnCamera.setAttribute('aria-pressed', String(!cameraOn));
-        btnCamera.textContent = cameraOn ? 'CAMERA OFF' : 'CAMERA ON';
-        localVideo.classList.toggle('camera-off', cameraOn);
+    window.addEventListener('keydown', event => {
+        if (!chkSpacebar.checked || event.code !== 'Space' || spaceKeyDown || deviceView.classList.contains('hidden')) return;
+        if (['input', 'textarea'].includes(document.activeElement.tagName.toLowerCase())) return;
+        event.preventDefault(); spaceKeyDown = true;
+        if (isPttLocked) isTransmitting ? stopTransmit() : startTransmit(); else startTransmit();
     });
-
-    videoPanel.addEventListener('click', async (event) => {
-        const fullscreenButton = event.target.closest('.fullscreen-button');
-        if (!fullscreenButton) return;
-
-        const tile = fullscreenButton.closest('.video-tile');
+    window.addEventListener('keyup', event => {
+        if (event.code === 'Space') { spaceKeyDown = false; if (!isPttLocked) stopTransmit(); }
+    });
+    videoPanel.addEventListener('click', async event => {
+        const button = event.target.closest('.fullscreen-button');
+        if (!button) return;
+        const tile = button.closest('.video-tile');
         if (!tile) return;
-
-        try {
-            if (document.fullscreenElement) {
-                await document.exitFullscreen();
-            } else if (tile.requestFullscreen) {
-                await tile.requestFullscreen();
-            } else if (tile.webkitRequestFullscreen) {
-                tile.webkitRequestFullscreen();
-            } else {
-                showToast('Fullscreen is not supported on this browser');
-            }
-        } catch (error) {
-            showToast('Fullscreen was blocked by the browser');
-        }
-    });
-    usernameInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') roomInput.focus();
-    });
-    roomInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') joinRoom();
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (tile.requestFullscreen) await tile.requestFullscreen();
     });
 
-    // Responsive radio signal monitor with carrier, sweep, pulse, and activity layers.
     function startVisualizer() {
-        const ctx = audioCanvas.getContext('2d');
-
-        function resizeCanvas() {
-            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-            const width = Math.max(audioCanvas.parentElement.clientWidth, 1);
-            const height = Math.max(audioCanvas.parentElement.clientHeight, 1);
-            audioCanvas.width = Math.floor(width * pixelRatio);
-            audioCanvas.height = Math.floor(height * pixelRatio);
-            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-        }
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
-
+        const context = audioCanvas.getContext('2d');
         let phase = 0;
-        let sweep = 0;
-
+        function resize() {
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            audioCanvas.width = audioCanvas.clientWidth * ratio;
+            audioCanvas.height = audioCanvas.clientHeight * ratio;
+            context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        }
+        resize(); window.addEventListener('resize', resize);
         function draw() {
             requestAnimationFrame(draw);
-            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-            const w = audioCanvas.width / pixelRatio;
-            const h = audioCanvas.height / pixelRatio;
-
-            ctx.clearRect(0, 0, w, h);
-
-            let activityLevel = 0;
-            if (webrtcManager && (isTransmitting || activeSpeakerIds.size > 0)) {
-                activityLevel = webrtcManager.getAudioVisualLevel() / 255;
-            }
-
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            const width = audioCanvas.width / ratio;
+            const height = audioCanvas.height / ratio;
             const active = isTransmitting || activeSpeakerIds.size > 0;
-            const signalColor = isTransmitting ? '#ef3e32' : active ? '#168c5b' : '#1d5cff';
-            const centerY = h / 2;
-            const amplitude = active ? Math.max(h * 0.12, activityLevel * h * 0.42) : h * 0.06;
-            phase += active ? 0.16 : 0.05;
-            sweep = (sweep + (active ? 1.8 : 0.55)) % Math.max(w, 1);
-
-            ctx.fillStyle = 'rgba(17, 17, 17, 0.06)';
-            for (let x = 0; x < w; x += 24) ctx.fillRect(x, 0, 1, h);
-            for (let y = 8; y < h; y += 16) ctx.fillRect(0, y, w, 1);
-
-            ctx.strokeStyle = signalColor;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (let i = 0; i <= 100; i++) {
-                const x = (i / 100) * w;
-                const wave = Math.sin(phase + i * 0.42) * amplitude;
-                const y = centerY + wave * Math.cos(phase * 0.45 + i * 0.08);
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            const level = webrtcManager ? webrtcManager.getAudioVisualLevel() / 255 : 0;
+            context.clearRect(0, 0, width, height);
+            context.strokeStyle = active ? '#55a9ff' : '#314866';
+            context.lineWidth = 3;
+            context.beginPath();
+            phase += active ? .14 : .035;
+            for (let i = 0; i <= 48; i++) {
+                const x = (i / 48) * width;
+                const y = height / 2 + Math.sin(phase + i * .45) * Math.max(3, level * height * .8) * Math.sin(i * .16);
+                if (i === 0) context.moveTo(x, y); else context.lineTo(x, y);
             }
-            ctx.stroke();
-
-            ctx.globalAlpha = active ? 0.9 : 0.45;
-            ctx.fillStyle = signalColor;
-            ctx.fillRect(sweep, 0, 2, h);
-            ctx.globalAlpha = 1;
-
-            const pulseCount = active ? 3 : 1;
-            for (let i = 0; i < pulseCount; i++) {
-                const radius = ((phase * 12 + i * 22) % Math.max(w, h)) / 2;
-                ctx.globalAlpha = Math.max(0, 0.35 - radius / Math.max(w, h));
-                ctx.beginPath();
-                ctx.arc(w / 2, centerY, radius, 0, Math.PI * 2);
-                ctx.strokeStyle = signalColor;
-                ctx.stroke();
-            }
-            ctx.globalAlpha = 1;
+            context.stroke();
         }
-
         draw();
     }
-
 })();
