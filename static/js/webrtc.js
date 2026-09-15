@@ -10,6 +10,7 @@ class WebRTCManager {
         this.localStream = null;
         this.peers = new Map(); // target_id -> RTCPeerConnection
         this.remoteAudioElements = new Map(); // target_id -> HTMLAudioElement
+        this.remoteVideoElements = new Map(); // target_id -> HTMLVideoElement
         this.audioContext = null;
         this.analyser = null;
         this.micSourceNode = null;
@@ -48,11 +49,16 @@ class WebRTCManager {
         }
 
         try {
-            this.localStream = await navigator.mediaDevices.getUserMedia({
-                // Keep the call audio natural while preventing speaker feedback.
-                audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false },
-                video: false
-            });
+            const audioConstraints = { echoCancellation: true, noiseSuppression: false, autoGainControl: false };
+            try {
+                this.localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: audioConstraints,
+                    video: { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 24, max: 30 } }
+                });
+            } catch (videoError) {
+                console.warn('Camera unavailable, continuing with audio only:', videoError);
+                this.localStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+            }
 
             // Start with microphone track disabled (PTT is silent by default)
             this.setMicrophoneEnabled(false);
@@ -77,6 +83,17 @@ class WebRTCManager {
                 track.enabled = enabled;
             });
         }
+    }
+
+    setCameraEnabled(enabled) {
+        if (!this.localStream) return false;
+        const videoTracks = this.localStream.getVideoTracks();
+        videoTracks.forEach(track => { track.enabled = enabled; });
+        return videoTracks.length > 0;
+    }
+
+    hasCamera() {
+        return Boolean(this.localStream && this.localStream.getVideoTracks().length);
     }
 
     setupAudioAnalyser() {
@@ -137,6 +154,30 @@ class WebRTCManager {
             } else {
                 const inboundStream = new MediaStream([event.track]);
                 audioEl.srcObject = inboundStream;
+            }
+
+            if (event.track.kind === 'video') {
+                let videoEl = this.remoteVideoElements.get(targetId);
+                if (!videoEl) {
+                    videoEl = document.createElement('video');
+                    videoEl.autoplay = true;
+                    videoEl.playsInline = true;
+                    videoEl.className = 'remote-video';
+                    this.remoteVideoElements.set(targetId, videoEl);
+                    const tile = document.createElement('div');
+                    tile.className = 'video-tile remote-video-tile';
+                    tile.dataset.peerId = targetId;
+                    tile.appendChild(videoEl);
+                    const label = document.createElement('span');
+                    label.className = 'video-name';
+                    label.textContent = (event.track.label || 'OPERATOR').toUpperCase();
+                    tile.appendChild(label);
+                    document.getElementById('remoteVideos').appendChild(tile);
+                }
+                videoEl.srcObject = event.streams && event.streams[0]
+                    ? event.streams[0]
+                    : new MediaStream([event.track]);
+                videoEl.play().catch(() => {});
             }
         };
 
@@ -226,6 +267,13 @@ class WebRTCManager {
             audioEl.srcObject = null;
             audioEl.remove();
             this.remoteAudioElements.delete(targetId);
+        }
+        const videoEl = this.remoteVideoElements.get(targetId);
+        if (videoEl) {
+            videoEl.srcObject = null;
+            const tile = videoEl.closest('.video-tile');
+            if (tile) tile.remove();
+            this.remoteVideoElements.delete(targetId);
         }
     }
 

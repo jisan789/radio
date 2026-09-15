@@ -87,6 +87,21 @@
                 <canvas id="audioCanvas"></canvas>
             </div>
 
+            <!-- Live video mesh -->
+            <section id="videoPanel" class="video-panel hidden" aria-label="Live video">
+                <div class="video-panel-header">
+                    <span>LIVE VIDEO</span>
+                    <button id="btnCamera" class="camera-button" type="button" aria-pressed="true">CAMERA ON</button>
+                </div>
+                <div id="videoGrid" class="video-grid">
+                    <div class="video-tile local-video-tile">
+                        <video id="localVideo" autoplay muted playsinline></video>
+                        <span class="video-name">YOU</span>
+                    </div>
+                    <div id="remoteVideos" class="remote-videos"></div>
+                </div>
+            </section>
+
             <!-- Active Peers in Channel -->
             <div class="peers-section">
                 <div class="peers-label">

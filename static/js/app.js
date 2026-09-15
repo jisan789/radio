@@ -17,6 +17,9 @@
     const btnJoin = document.getElementById('btnJoin');
     const btnLeave = document.getElementById('btnLeave');
     const btnPttLock = document.getElementById('btnPttLock');
+    const btnCamera = document.getElementById('btnCamera');
+    const videoPanel = document.getElementById('videoPanel');
+    const localVideo = document.getElementById('localVideo');
     const pttButton = document.getElementById('pttButton');
     const pttRing = document.getElementById('pttRing');
     const pttLabel = document.getElementById('pttLabel');
@@ -137,6 +140,12 @@
             alert(getMicrophoneErrorMessage(webrtcManager.lastMicrophoneError));
             return;
         }
+
+        localVideo.srcObject = webrtcManager.localStream;
+        localVideo.muted = true;
+        videoPanel.classList.toggle('hidden', !webrtcManager.hasCamera());
+        btnCamera.setAttribute('aria-pressed', 'true');
+        btnCamera.textContent = 'CAMERA ON';
 
         connectWebSocket();
     }
@@ -412,6 +421,17 @@
 
     // Join Button Event
     btnJoin.addEventListener('click', joinRoom);
+    btnCamera.addEventListener('click', () => {
+        if (!webrtcManager || !webrtcManager.hasCamera()) {
+            showToast('Camera is not available');
+            return;
+        }
+        const cameraOn = btnCamera.getAttribute('aria-pressed') === 'true';
+        webrtcManager.setCameraEnabled(!cameraOn);
+        btnCamera.setAttribute('aria-pressed', String(!cameraOn));
+        btnCamera.textContent = cameraOn ? 'CAMERA OFF' : 'CAMERA ON';
+        localVideo.classList.toggle('camera-off', cameraOn);
+    });
     usernameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') roomInput.focus();
     });
