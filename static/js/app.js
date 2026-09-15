@@ -14,6 +14,7 @@
     const deviceView = document.getElementById('deviceView');
     const usernameInput = document.getElementById('usernameInput');
     const roomInput = document.getElementById('roomInput');
+    const pinInput = document.getElementById('pinInput');
     const btnJoin = document.getElementById('btnJoin');
     const btnLeave = document.getElementById('btnLeave');
     const btnPttLock = document.getElementById('btnPttLock');
@@ -112,6 +113,7 @@
     async function joinRoom() {
         const userVal = usernameInput.value.trim();
         const roomVal = defaultRoom;
+        const pinVal = pinInput.value.trim();
 
         if (!userVal) {
             usernameInput.focus();
@@ -121,6 +123,12 @@
         if (!roomVal) {
             roomInput.focus();
             showToast("Please enter or select a Channel");
+            return;
+        }
+        if (pinVal !== '2026') {
+            pinInput.focus();
+            pinInput.select();
+            showToast("Incorrect access PIN");
             return;
         }
 
@@ -482,6 +490,9 @@
         if (e.key === 'Enter') roomInput.focus();
     });
     roomInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') pinInput.focus();
+    });
+    pinInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') joinRoom();
     });
 
