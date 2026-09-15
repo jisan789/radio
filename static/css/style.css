@@ -639,3 +639,281 @@ body {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Neo-brutalist visual system */
+:root {
+    --bg-main: #f4e8c1;
+    --bg-surface: #fffdf4;
+    --bg-panel: #ffffff;
+    --border-color: #111111;
+    --accent-primary: #1d5cff;
+    --accent-hover: #1748c7;
+    --tx-color: #ef3e32;
+    --tx-glow: rgba(239, 62, 50, 0.25);
+    --rx-color: #168c5b;
+    --rx-glow: rgba(22, 140, 91, 0.25);
+    --lcd-bg: #f8c928;
+    --lcd-border: #111111;
+    --lcd-glow: #111111;
+    --lcd-text: #111111;
+    --font-primary: 'Chakra Petch', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+}
+
+body {
+    color: #111111;
+    background-color: var(--bg-main);
+    background-image: repeating-linear-gradient(-45deg, rgba(17, 17, 17, 0.045) 0 2px, transparent 2px 12px);
+}
+
+.view-card {
+    background: var(--bg-surface);
+    border: 4px solid #111111;
+    border-radius: 2px;
+    box-shadow: 10px 10px 0 #111111;
+}
+
+.antenna-stud {
+    top: -14px;
+    left: 36px;
+    width: 18px;
+    height: 18px;
+    background: #ef3e32;
+    border: 3px solid #111111;
+    border-radius: 0;
+}
+
+.lobby-header {
+    background: #1d5cff;
+    border-bottom: 4px solid #111111;
+    padding: 30px 24px 20px;
+}
+
+.radio-badge,
+.channel-pill {
+    background: #f8c928;
+    border: 3px solid #111111;
+    border-radius: 0;
+    color: #111111;
+    box-shadow: 3px 3px 0 #111111;
+}
+
+.lobby-title {
+    color: #ffffff;
+    font-weight: 800;
+    text-transform: uppercase;
+    text-shadow: 3px 3px 0 #111111;
+}
+
+.lobby-subtitle {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.lobby-body {
+    background: #fffdf4;
+}
+
+.input-label,
+.peers-label,
+.toggle-item,
+.device-top-bar,
+.network-info-card {
+    color: #111111;
+    font-weight: 800;
+}
+
+.input-field {
+    background: #ffffff;
+    border: 3px solid #111111;
+    border-radius: 0;
+    color: #111111;
+    box-shadow: 4px 4px 0 #111111;
+}
+
+.input-field:focus {
+    border-color: #111111;
+    box-shadow: 6px 6px 0 #1d5cff;
+}
+
+.btn-primary {
+    background: #ef3e32;
+    border: 3px solid #111111;
+    border-radius: 0;
+    color: #ffffff;
+    box-shadow: 6px 6px 0 #111111;
+}
+
+.btn-primary:hover,
+.ptt-lock-button:hover {
+    background: #f8c928;
+    color: #111111;
+}
+
+.btn-primary:active,
+.ptt-lock-button:active {
+    transform: translate(4px, 4px);
+    box-shadow: 2px 2px 0 #111111;
+}
+
+.walkie-device {
+    background: #fffdf4;
+}
+
+.device-top-bar {
+    border-bottom: 3px solid #111111;
+}
+
+.btn-leave,
+.ptt-lock-button {
+    background: #ffffff;
+    border: 3px solid #111111;
+    border-radius: 0;
+    color: #111111;
+    box-shadow: 3px 3px 0 #111111;
+    font-weight: 800;
+}
+
+.ptt-lock-button.active {
+    background: #f8c928;
+    border-color: #111111;
+    color: #111111;
+    box-shadow: 3px 3px 0 #111111;
+}
+
+.lcd-screen,
+.visualizer-container,
+.peers-section,
+.device-controls,
+.network-info-card {
+    border: 3px solid #111111;
+    border-radius: 0;
+    box-shadow: 5px 5px 0 #111111;
+}
+
+.lcd-screen {
+    background: #f8c928;
+    box-shadow: 5px 5px 0 #111111;
+}
+
+.lcd-screen::before {
+    opacity: 0.12;
+}
+
+.lcd-banner {
+    background: #fffdf4;
+    border: 2px solid #111111;
+    border-radius: 0;
+}
+
+.state-standby,
+.state-tx,
+.state-rx,
+.lcd-header,
+.lcd-channel,
+.lcd-banner {
+    color: #111111;
+    text-shadow: none;
+}
+
+.visualizer-container,
+.peers-section,
+.device-controls {
+    background: #ffffff;
+}
+
+.peer-chip {
+    background: #ffffff;
+    border: 2px solid #111111;
+    border-radius: 0;
+    color: #111111;
+    box-shadow: 2px 2px 0 #111111;
+}
+
+.peer-chip.you {
+    background: #b8d0ff;
+    border-color: #111111;
+    color: #111111;
+}
+
+.peer-chip.talking {
+    background: #ffb8b0;
+    border-color: #111111;
+    color: #111111;
+    box-shadow: 2px 2px 0 #111111;
+}
+
+.ptt-outer-ring {
+    background: #1d5cff;
+    border: 4px solid #111111;
+    border-radius: 50%;
+    box-shadow: 8px 8px 0 #111111;
+}
+
+.ptt-outer-ring.transmitting {
+    border-color: #111111;
+    background: #ef3e32;
+    box-shadow: 8px 8px 0 #111111;
+}
+
+.ptt-outer-ring.receiving {
+    border-color: #111111;
+    background: #168c5b;
+    box-shadow: 8px 8px 0 #111111;
+}
+
+.ptt-button {
+    background: #fffdf4;
+    border: 4px solid #111111;
+    color: #111111;
+    box-shadow: 5px 5px 0 #111111;
+}
+
+.ptt-button:active,
+.ptt-button.pressed {
+    background: #ffb8b0;
+    border-color: #111111;
+    box-shadow: 1px 1px 0 #111111;
+}
+
+.ptt-hint {
+    color: #111111;
+}
+
+.network-info-card {
+    background: #f8c928;
+    color: #111111;
+}
+
+.network-url {
+    color: #111111;
+}
+
+.toast-notice {
+    background: #111111;
+    border: 3px solid #111111;
+    border-radius: 0;
+    color: #ffffff;
+    box-shadow: 5px 5px 0 #ef3e32;
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 12px;
+    }
+
+    .view-card {
+        box-shadow: 6px 6px 0 #111111;
+    }
+
+    .ptt-outer-ring {
+        width: 174px;
+        height: 174px;
+        box-shadow: 6px 6px 0 #111111;
+    }
+
+    .ptt-button {
+        width: 140px;
+        height: 140px;
+    }
+}
