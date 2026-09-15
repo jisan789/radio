@@ -13,7 +13,6 @@ class WebRTCManager {
         this.audioContext = null;
         this.analyser = null;
         this.micSourceNode = null;
-        this.remoteMixerGain = null;
         this.isMicActive = false;
         this.lastMicrophoneError = null;
 
