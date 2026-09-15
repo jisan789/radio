@@ -447,66 +447,6 @@ body {
     background: #ffb8b0;
 }
 
-.light-button {
-    background: #fff8d6;
-}
-
-.light-button[aria-pressed="true"] {
-    background: #f8c928;
-}
-
-.screen-light {
-    --light-level: 0.88;
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background: rgba(255, 249, 220, var(--light-level));
-}
-
-.screen-light.hidden {
-    display: none;
-}
-
-.screen-light-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: min(100% - 24px, 460px);
-    margin-bottom: 18px;
-    padding: 10px;
-    background: #ffffff;
-    border: 3px solid #111111;
-    box-shadow: 5px 5px 0 #111111;
-}
-
-.light-close-button {
-    flex: 0 0 auto;
-    padding: 7px 9px;
-    background: #ef3e32;
-    border: 2px solid #111111;
-    color: #ffffff;
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.light-slider-label {
-    color: #111111;
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    font-weight: 800;
-}
-
-.light-slider {
-    min-width: 80px;
-    width: 100%;
-    accent-color: #f8c928;
-}
-
 .video-grid,
 .remote-videos {
     display: grid;
@@ -576,7 +516,11 @@ body {
     height: 100vh;
     aspect-ratio: auto;
     border: 0;
-    background: #111111;
+    background: #fff8d6;
+}
+
+.video-tile:fullscreen::backdrop {
+    background: #fff8d6;
 }
 
 .video-tile:fullscreen video {
