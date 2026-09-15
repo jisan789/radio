@@ -51,6 +51,8 @@
     const mockFrequencies = [
         "146.520 MHz", "462.562 MHz", "446.006 MHz", "151.625 MHz", "467.637 MHz"
     ];
+    const defaultRoom = 'ALPHA-1';
+    const savedUsername = localStorage.getItem('walkyTalkyUsername');
 
     function getAppBasePath() {
         const path = window.location.pathname;
@@ -113,13 +115,10 @@
     }
     fetchNetworkInfo();
 
-    // Quick channel pill selection
-    document.querySelectorAll('.channel-pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-            document.querySelectorAll('.channel-pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            roomInput.value = pill.dataset.channel;
-        });
+    usernameInput.value = savedUsername || 'Operator-' + Math.floor(100 + Math.random() * 900);
+    roomInput.value = defaultRoom;
+    usernameInput.addEventListener('input', () => {
+        localStorage.setItem('walkyTalkyUsername', usernameInput.value.trim());
     });
 
     // Toggle Audio FX setting
@@ -130,7 +129,7 @@
     // Join Channel
     async function joinRoom() {
         const userVal = usernameInput.value.trim();
-        const roomVal = roomInput.value.trim().toUpperCase();
+        const roomVal = defaultRoom;
 
         if (!userVal) {
             usernameInput.focus();
@@ -145,6 +144,7 @@
 
         username = userVal;
         currentRoom = roomVal;
+        localStorage.setItem('walkyTalkyUsername', username);
 
         // Initialize Web Audio & Synthesizer on user gesture
         window.tacticalAudioFX.init();
@@ -482,7 +482,4 @@
         draw();
     }
 
-    // Default username placeholder for convenience
-    usernameInput.value = 'Operator-' + Math.floor(100 + Math.random() * 900);
-    roomInput.value = 'ALPHA-1';
 })();

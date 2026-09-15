@@ -37,13 +37,7 @@
 
             <div class="input-group">
                 <label class="input-label" for="roomInput">Channel Frequency / Room Code</label>
-                <input type="text" id="roomInput" class="input-field" placeholder="ALPHA-1" maxlength="12" autocomplete="off" spellcheck="false" style="text-transform: uppercase;">
-                <div class="channels-quick">
-                    <span class="channel-pill" data-channel="ALPHA-1">ALPHA-1</span>
-                    <span class="channel-pill" data-channel="BRAVO-2">BRAVO-2</span>
-                    <span class="channel-pill" data-channel="DELTA-9">DELTA-9</span>
-                    <span class="channel-pill" data-channel="TACTICAL">TACTICAL</span>
-                </div>
+                <input type="text" id="roomInput" class="input-field" value="ALPHA-1" readonly aria-readonly="true">
             </div>
 
             <button id="btnJoin" class="btn-primary">
