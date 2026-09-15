@@ -10,7 +10,6 @@ class WebRTCManager {
         this.localStream = null;
         this.peers = new Map(); // target_id -> RTCPeerConnection
         this.remoteAudioElements = new Map(); // target_id -> HTMLAudioElement
-        this.remoteAudioNodes = new Map(); // target_id -> Web Audio playback chain
         this.audioContext = null;
         this.analyser = null;
         this.micSourceNode = null;
@@ -109,40 +108,6 @@ class WebRTCManager {
         return sum / dataArray.length; // 0 to 255
     }
 
-    connectSoftRemoteAudio(targetId, audioEl) {
-        if (!this.audioContext || this.remoteAudioNodes.has(targetId)) return;
-
-        try {
-            const source = this.audioContext.createMediaElementSource(audioEl);
-            const highPass = this.audioContext.createBiquadFilter();
-            const lowPass = this.audioContext.createBiquadFilter();
-            const compressor = this.audioContext.createDynamicsCompressor();
-            const gain = this.audioContext.createGain();
-
-            // A light voice polish: remove rumble, soften harsh highs, and level volume.
-            highPass.type = 'highpass';
-            highPass.frequency.value = 80;
-            lowPass.type = 'lowpass';
-            lowPass.frequency.value = 9000;
-            compressor.threshold.value = -24;
-            compressor.knee.value = 18;
-            compressor.ratio.value = 2.2;
-            compressor.attack.value = 0.012;
-            compressor.release.value = 0.18;
-            gain.gain.value = 0.92;
-
-            source.connect(highPass);
-            highPass.connect(lowPass);
-            lowPass.connect(compressor);
-            compressor.connect(gain);
-            gain.connect(this.audioContext.destination);
-            this.remoteAudioNodes.set(targetId, { source, highPass, lowPass, compressor, gain });
-            this.audioContext.resume();
-        } catch (error) {
-            console.warn('Soft voice playback setup failed:', error);
-        }
-    }
-
     createPeerConnection(targetId) {
         if (this.peers.has(targetId)) {
             return this.peers.get(targetId);
@@ -174,8 +139,6 @@ class WebRTCManager {
                 const inboundStream = new MediaStream([event.track]);
                 audioEl.srcObject = inboundStream;
             }
-            this.connectSoftRemoteAudio(targetId, audioEl);
-            audioEl.play().catch(() => {});
         };
 
         // ICE candidate generation
@@ -264,11 +227,6 @@ class WebRTCManager {
             audioEl.srcObject = null;
             audioEl.remove();
             this.remoteAudioElements.delete(targetId);
-        }
-        const audioNodes = this.remoteAudioNodes.get(targetId);
-        if (audioNodes) {
-            Object.values(audioNodes).forEach(node => node.disconnect());
-            this.remoteAudioNodes.delete(targetId);
         }
     }
 
