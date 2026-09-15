@@ -193,6 +193,10 @@ async def get_info():
 async def get_health():
     return {"status": "ok"}
 
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
     import argparse
