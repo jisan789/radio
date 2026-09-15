@@ -16,6 +16,7 @@
     const roomInput = document.getElementById('roomInput');
     const btnJoin = document.getElementById('btnJoin');
     const btnLeave = document.getElementById('btnLeave');
+    const btnPttLock = document.getElementById('btnPttLock');
     const pttButton = document.getElementById('pttButton');
     const pttRing = document.getElementById('pttRing');
     const pttLabel = document.getElementById('pttLabel');
@@ -42,6 +43,7 @@
     let ws = null;
     let webrtcManager = null;
     let isTransmitting = false;
+    let isPttLocked = false;
     const activeSpeakerIds = new Set();
     let spaceKeyDown = false;
     let knownPeers = new Map(); // client_id -> username
@@ -328,6 +330,20 @@
         updateAudioState();
     }
 
+    function togglePttLock() {
+        isPttLocked = !isPttLocked;
+        btnPttLock.classList.toggle('active', isPttLocked);
+        btnPttLock.setAttribute('aria-pressed', String(isPttLocked));
+        btnPttLock.querySelector('.lock-icon').textContent = isPttLocked ? '\uD83D\uDD13' : '\uD83D\uDD12';
+        btnPttLock.title = isPttLocked
+            ? 'PTT lock active: click PTT to start and click again to stop'
+            : 'Click PTT once to transmit and again to stop';
+
+        if (!isPttLocked && isTransmitting) {
+            stopTransmit();
+        }
+    }
+
     function resetPttState() {
         isTransmitting = false;
         activeSpeakerIds.clear();
@@ -345,11 +361,20 @@
         try {
             pttButton.setPointerCapture(e.pointerId);
         } catch (err) {}
+        if (isPttLocked) {
+            if (isTransmitting) {
+                stopTransmit();
+            } else {
+                startTransmit();
+            }
+            return;
+        }
         startTransmit();
     });
 
     const handlePointerRelease = (e) => {
         e.preventDefault();
+        if (isPttLocked) return;
         stopTransmit();
     };
 
@@ -357,10 +382,12 @@
     pttButton.addEventListener('pointercancel', handlePointerRelease);
     pttButton.addEventListener('pointerleave', (e) => {
         // Only stop if pointer wasn't captured
-        if (!pttButton.hasPointerCapture || !pttButton.hasPointerCapture(e.pointerId)) {
+        if (!isPttLocked && (!pttButton.hasPointerCapture || !pttButton.hasPointerCapture(e.pointerId))) {
             stopTransmit();
         }
     });
+
+    btnPttLock.addEventListener('click', togglePttLock);
 
     // Spacebar Keyboard Push-To-Talk
     window.addEventListener('keydown', (e) => {
@@ -370,7 +397,12 @@
             if (activeTag === 'input' || activeTag === 'textarea') return;
             e.preventDefault();
             spaceKeyDown = true;
-            startTransmit();
+            if (isPttLocked) {
+                if (isTransmitting) stopTransmit();
+                else startTransmit();
+            } else {
+                startTransmit();
+            }
         }
     });
 
@@ -378,7 +410,7 @@
         if (e.code === 'Space' && spaceKeyDown) {
             e.preventDefault();
             spaceKeyDown = false;
-            stopTransmit();
+            if (!isPttLocked) stopTransmit();
         }
     });
 

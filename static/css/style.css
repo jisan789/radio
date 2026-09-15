@@ -270,6 +270,32 @@ body {
     color: #ef4444;
 }
 
+.ptt-lock-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #94a3b8;
+    padding: 5px 9px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ptt-lock-button:hover,
+.ptt-lock-button.active {
+    border-color: #f59e0b;
+    color: #fbbf24;
+}
+
+.ptt-lock-button.active {
+    background: rgba(245, 158, 11, 0.12);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
 /* Retro-Modern LCD Screen */
 .lcd-screen {
     background: var(--lcd-bg);
