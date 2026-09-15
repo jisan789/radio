@@ -432,6 +432,28 @@
         btnCamera.textContent = cameraOn ? 'CAMERA OFF' : 'CAMERA ON';
         localVideo.classList.toggle('camera-off', cameraOn);
     });
+
+    videoPanel.addEventListener('click', async (event) => {
+        const fullscreenButton = event.target.closest('.fullscreen-button');
+        if (!fullscreenButton) return;
+
+        const tile = fullscreenButton.closest('.video-tile');
+        if (!tile) return;
+
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else if (tile.requestFullscreen) {
+                await tile.requestFullscreen();
+            } else if (tile.webkitRequestFullscreen) {
+                tile.webkitRequestFullscreen();
+            } else {
+                showToast('Fullscreen is not supported on this browser');
+            }
+        } catch (error) {
+            showToast('Fullscreen was blocked by the browser');
+        }
+    });
     usernameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') roomInput.focus();
     });

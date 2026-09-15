@@ -172,6 +172,13 @@ class WebRTCManager {
                     label.className = 'video-name';
                     label.textContent = (event.track.label || 'OPERATOR').toUpperCase();
                     tile.appendChild(label);
+                    const fullscreenButton = document.createElement('button');
+                    fullscreenButton.className = 'fullscreen-button';
+                    fullscreenButton.type = 'button';
+                    fullscreenButton.title = 'Watch operator fullscreen';
+                    fullscreenButton.setAttribute('aria-label', 'Watch operator fullscreen');
+                    fullscreenButton.innerHTML = '&#x26F6;';
+                    tile.appendChild(fullscreenButton);
                     document.getElementById('remoteVideos').appendChild(tile);
                 }
                 videoEl.srcObject = event.streams && event.streams[0]

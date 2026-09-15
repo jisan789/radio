@@ -482,6 +482,40 @@ body {
     font-weight: 800;
 }
 
+.fullscreen-button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 2;
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    background: #ffffff;
+    border: 2px solid #111111;
+    color: #111111;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #111111;
+}
+
+.fullscreen-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+}
+
+.video-tile:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto;
+    border: 0;
+    background: #111111;
+}
+
+.video-tile:fullscreen video {
+    object-fit: contain;
+}
+
 .remote-videos {
     display: contents;
 }
