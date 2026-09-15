@@ -436,65 +436,74 @@
         if (e.key === 'Enter') joinRoom();
     });
 
-    // Audio Oscilloscope Waveform Animation
+    // Responsive radio signal monitor with carrier, sweep, pulse, and activity layers.
     function startVisualizer() {
         const ctx = audioCanvas.getContext('2d');
 
         function resizeCanvas() {
-            audioCanvas.width = audioCanvas.parentElement.clientWidth * window.devicePixelRatio || 300;
-            audioCanvas.height = audioCanvas.parentElement.clientHeight * window.devicePixelRatio || 48;
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            const width = Math.max(audioCanvas.parentElement.clientWidth, 1);
+            const height = Math.max(audioCanvas.parentElement.clientHeight, 1);
+            audioCanvas.width = Math.floor(width * pixelRatio);
+            audioCanvas.height = Math.floor(height * pixelRatio);
+            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
         let phase = 0;
+        let sweep = 0;
 
         function draw() {
             requestAnimationFrame(draw);
-            const w = audioCanvas.width;
-            const h = audioCanvas.height;
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            const w = audioCanvas.width / pixelRatio;
+            const h = audioCanvas.height / pixelRatio;
 
             ctx.clearRect(0, 0, w, h);
 
             let activityLevel = 0;
-            if (webrtcManager && (isTransmitting || activeSpeakerIds.size > 1)) {
+            if (webrtcManager && (isTransmitting || activeSpeakerIds.size > 0)) {
                 activityLevel = webrtcManager.getAudioVisualLevel() / 255;
             }
 
-            // Draw oscilloscope line
-            ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+            const active = isTransmitting || activeSpeakerIds.size > 0;
+            const signalColor = isTransmitting ? '#ef3e32' : active ? '#168c5b' : '#1d5cff';
+            const centerY = h / 2;
+            const amplitude = active ? Math.max(h * 0.12, activityLevel * h * 0.42) : h * 0.06;
+            phase += active ? 0.16 : 0.05;
+            sweep = (sweep + (active ? 1.8 : 0.55)) % Math.max(w, 1);
+
+            ctx.fillStyle = 'rgba(17, 17, 17, 0.06)';
+            for (let x = 0; x < w; x += 24) ctx.fillRect(x, 0, 1, h);
+            for (let y = 8; y < h; y += 16) ctx.fillRect(0, y, w, 1);
+
+            ctx.strokeStyle = signalColor;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-
-            let strokeColor = 'rgba(57, 255, 150, 0.4)';
-            if (isTransmitting) {
-                strokeColor = '#ef4444';
-            } else if (activeSpeakerIds.size > 1) {
-                strokeColor = '#38bdf8';
+            for (let i = 0; i <= 100; i++) {
+                const x = (i / 100) * w;
+                const wave = Math.sin(phase + i * 0.42) * amplitude;
+                const y = centerY + wave * Math.cos(phase * 0.45 + i * 0.08);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             }
-
-            ctx.strokeStyle = strokeColor;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = strokeColor;
-
-            const sliceWidth = w / 60;
-            let x = 0;
-            phase += 0.12;
-
-            for (let i = 0; i <= 60; i++) {
-                const amp = (activityLevel > 0.05) ? (activityLevel * (h / 2.6)) : (h * 0.08);
-                const sine = Math.sin(phase + i * 0.35) * Math.cos(phase * 0.5 + i * 0.2);
-                const y = (h / 2) + sine * amp;
-
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-                x += sliceWidth;
-            }
-
             ctx.stroke();
-            ctx.shadowBlur = 0; // reset
+
+            ctx.globalAlpha = active ? 0.9 : 0.45;
+            ctx.fillStyle = signalColor;
+            ctx.fillRect(sweep, 0, 2, h);
+            ctx.globalAlpha = 1;
+
+            const pulseCount = active ? 3 : 1;
+            for (let i = 0; i < pulseCount; i++) {
+                const radius = ((phase * 12 + i * 22) % Math.max(w, h)) / 2;
+                ctx.globalAlpha = Math.max(0, 0.35 - radius / Math.max(w, h));
+                ctx.beginPath();
+                ctx.arc(w / 2, centerY, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = signalColor;
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
         }
 
         draw();

@@ -917,3 +917,119 @@ body {
         height: 140px;
     }
 }
+
+/* Fluid layout tuning for short and narrow screens */
+body {
+    min-height: 100svh;
+    padding: clamp(8px, 2.5vw, 24px);
+}
+
+.view-card,
+.network-info-card {
+    width: min(100%, 520px);
+}
+
+.lobby-header,
+.lobby-body,
+.walkie-device {
+    padding-left: clamp(14px, 4vw, 28px);
+    padding-right: clamp(14px, 4vw, 28px);
+}
+
+.lobby-title {
+    font-size: clamp(1.25rem, 6vw, 1.85rem);
+}
+
+.device-top-bar,
+.lcd-header,
+.lcd-channel,
+.lcd-banner,
+.device-controls {
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.lcd-channel {
+    font-size: clamp(1.35rem, 7vw, 1.9rem);
+}
+
+.lcd-frequency,
+.speakerNotice {
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
+.visualizer-container {
+    height: clamp(64px, 14vw, 92px);
+}
+
+.ptt-area {
+    padding-top: clamp(4px, 2vw, 10px);
+    padding-bottom: clamp(8px, 3vw, 16px);
+}
+
+.ptt-outer-ring {
+    width: clamp(148px, 48vw, 210px);
+    height: clamp(148px, 48vw, 210px);
+}
+
+.ptt-button {
+    width: calc(100% - clamp(28px, 8vw, 42px));
+    height: calc(100% - clamp(28px, 8vw, 42px));
+}
+
+.ptt-label {
+    font-size: clamp(0.85rem, 4vw, 1.1rem);
+    text-align: center;
+}
+
+.toggle-group {
+    flex-wrap: wrap;
+}
+
+@media (max-height: 700px) and (min-width: 481px) {
+    body {
+        justify-content: flex-start;
+    }
+
+    .ptt-area {
+        padding-top: 0;
+        padding-bottom: 4px;
+    }
+
+    .ptt-outer-ring {
+        width: 148px;
+        height: 148px;
+    }
+}
+
+@media (max-width: 360px) {
+    .walkie-device {
+        gap: 11px;
+    }
+
+    .device-top-bar {
+        font-size: 0.66rem;
+    }
+
+    .lcd-screen,
+    .peers-section,
+    .device-controls {
+        padding: 10px;
+    }
+
+    .lcd-banner {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .speakerNotice {
+        text-align: left;
+    }
+
+    .device-controls {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
