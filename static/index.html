@@ -18,6 +18,15 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast-notice">Connecting...</div>
 
+    <!-- Warm screen light for face illumination -->
+    <div id="screenLight" class="screen-light hidden" aria-label="Face light">
+        <div class="screen-light-controls">
+            <button id="btnCloseLight" class="light-close-button" type="button">CLOSE LIGHT</button>
+            <label class="light-slider-label" for="lightBrightness">BRIGHTNESS</label>
+            <input id="lightBrightness" class="light-slider" type="range" min="0.45" max="1" step="0.01" value="0.88">
+        </div>
+    </div>
+
     <!-- VIEW 1: LOBBY / JOIN ROOM -->
     <div id="lobbyView" class="view-card">
         <div class="antenna-stud"></div>
@@ -91,7 +100,10 @@
             <section id="videoPanel" class="video-panel hidden" aria-label="Live video">
                 <div class="video-panel-header">
                     <span>LIVE VIDEO</span>
-                    <button id="btnCamera" class="camera-button" type="button" aria-pressed="true">CAMERA ON</button>
+                    <div class="video-header-actions">
+                        <button id="btnLight" class="camera-button light-button" type="button">FACE LIGHT</button>
+                        <button id="btnCamera" class="camera-button" type="button" aria-pressed="true">CAMERA ON</button>
+                    </div>
                 </div>
                 <div id="videoGrid" class="video-grid">
                     <div class="video-tile local-video-tile">

@@ -18,6 +18,10 @@
     const btnLeave = document.getElementById('btnLeave');
     const btnPttLock = document.getElementById('btnPttLock');
     const btnCamera = document.getElementById('btnCamera');
+    const btnLight = document.getElementById('btnLight');
+    const btnCloseLight = document.getElementById('btnCloseLight');
+    const screenLight = document.getElementById('screenLight');
+    const lightBrightness = document.getElementById('lightBrightness');
     const videoPanel = document.getElementById('videoPanel');
     const localVideo = document.getElementById('localVideo');
     const pttButton = document.getElementById('pttButton');
@@ -432,6 +436,18 @@
         btnCamera.textContent = cameraOn ? 'CAMERA OFF' : 'CAMERA ON';
         localVideo.classList.toggle('camera-off', cameraOn);
     });
+
+    function setScreenLight(open) {
+        screenLight.classList.toggle('hidden', !open);
+        btnLight.setAttribute('aria-pressed', String(open));
+    }
+
+    btnLight.addEventListener('click', () => setScreenLight(true));
+    btnCloseLight.addEventListener('click', () => setScreenLight(false));
+    lightBrightness.addEventListener('input', () => {
+        screenLight.style.setProperty('--light-level', lightBrightness.value);
+    });
+    screenLight.style.setProperty('--light-level', lightBrightness.value);
 
     videoPanel.addEventListener('click', async (event) => {
         const fullscreenButton = event.target.closest('.fullscreen-button');
