@@ -32,7 +32,6 @@
     const speakerNotice = document.getElementById('speakerNotice');
     const peersList = document.getElementById('peersList');
     const toast = document.getElementById('toast');
-    const networkAddress = document.getElementById('networkAddress');
     const audioCanvas = document.getElementById('audioCanvas');
     const chkSpacebar = document.getElementById('chkSpacebar');
 
@@ -99,22 +98,6 @@
                 return `Microphone access failed: ${error.message}`;
         }
     }
-
-    // Display the current app address.
-    async function fetchNetworkInfo() {
-        try {
-            const res = await fetch(`${getAppBasePath()}/api/info`);
-            const data = await res.json();
-            if (data.app_url) {
-                networkAddress.textContent = data.app_url;
-            } else {
-                networkAddress.textContent = window.location.origin;
-            }
-        } catch (e) {
-            networkAddress.textContent = window.location.origin;
-        }
-    }
-    fetchNetworkInfo();
 
     usernameInput.value = savedUsername || 'Operator-' + Math.floor(100 + Math.random() * 900);
     roomInput.value = defaultRoom;
