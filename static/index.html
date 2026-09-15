@@ -2,105 +2,151 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#08111f">
-    <title>Alpha Call</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web Walkie-Talkie | Tactical PTT Audio</title>
+    <meta name="description" content="Browser-based real-time push-to-talk communication system using WebRTC and WebSockets.">
+
+    <!-- Google Fonts for Tactical Styling -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="static/css/style.css">
 </head>
 <body>
-    <main class="app-shell">
-        <section id="lobbyView" class="lobby-screen">
-            <div class="lobby-mark">AC</div>
-            <p class="eyebrow">PRIVATE GROUP CALL</p>
-            <h1>Talk together,<br><em>stay close.</em></h1>
-            <p class="lobby-copy">A simple audio call for your channel. Video is always optional.</p>
-            <div class="join-card">
-                <label for="usernameInput">Your name</label>
-                <input id="usernameInput" maxlength="20" autocomplete="name" placeholder="e.g. Operator-848">
-                <label for="roomInput">Room</label>
-                <input id="roomInput" value="ALPHA-1" readonly>
-                <button id="btnJoin" class="primary-button" type="button">Join call <span>→</span></button>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-notice">Connecting...</div>
+
+    <!-- VIEW 1: LOBBY / JOIN ROOM -->
+    <div id="lobbyView" class="view-card">
+        <div class="antenna-stud"></div>
+        <div class="lobby-header">
+            <div class="radio-badge">
+                <span>📡</span> WebRTC Comm Unit
             </div>
-            <p class="privacy-note">Microphone access is required. Camera stays off until you choose it.</p>
-        </section>
+            <h1 class="lobby-title">Web Walkie-Talkie</h1>
+            <p class="lobby-subtitle">Real-time Push-to-Talk Voice Relay</p>
+        </div>
 
-        <section id="deviceView" class="call-screen hidden">
-            <header class="call-header">
-                <button class="icon-button" id="btnMinimize" type="button" aria-label="Minimize call">⌄</button>
-                <div class="call-heading">
-                    <h1 id="callRoom">ALPHA-1</h1>
-                    <p id="callTitle">Group voice call</p>
-                </div>
-                <button class="icon-button" id="btnMore" type="button" aria-label="More options">⋮</button>
-            </header>
-
-            <div class="call-status">
-                <span class="status-dot"></span>
-                <span id="connectionStatus">Link active</span>
-                <span class="status-divider">·</span>
-                <span id="peersCount">1 online</span>
+        <div class="lobby-body">
+            <div class="input-group">
+                <label class="input-label" for="usernameInput">Operator Callsign (Name)</label>
+                <input type="text" id="usernameInput" class="input-field" placeholder="e.g. Operator" maxlength="15" autocomplete="off" spellcheck="false">
             </div>
 
-            <section class="call-stage" aria-label="Call participants">
-                <div id="peersList" class="peers-list single-call"></div>
-                <div class="audio-activity">
-                    <canvas id="audioCanvas"></canvas>
-                </div>
-                <p id="speakerNotice" class="speaker-notice">Ready to talk</p>
-            </section>
+            <div class="input-group">
+                <label class="input-label" for="roomInput">Channel Frequency / Room Code</label>
+                <input type="text" id="roomInput" class="input-field" value="ALPHA-1" readonly aria-readonly="true">
+            </div>
 
-            <section id="videoPanel" class="video-panel hidden" aria-label="Video call">
+            <button id="btnJoin" class="btn-primary">
+                <span>⚡</span> Engage Channel
+            </button>
+        </div>
+    </div>
+
+    <!-- VIEW 2: ACTIVE WALKIE-TALKIE DEVICE -->
+    <div id="deviceView" class="view-card hidden">
+        <div class="antenna-stud"></div>
+        <div class="walkie-device">
+            <!-- Top Status Bar -->
+            <div class="device-top-bar">
+                <div class="top-indicators">
+                    <div class="led-indicator">
+                        <span id="txLed" class="led-dot"></span>
+                        <span style="color:#ef4444">TX</span>
+                    </div>
+                    <div class="led-indicator">
+                        <span id="rxLed" class="led-dot"></span>
+                        <span style="color:#10b981">RX</span>
+                    </div>
+                </div>
+                <div id="connectionStatus" style="font-family: var(--font-mono); color: #38bdf8;">ONLINE</div>
+                <button id="btnLeave" class="btn-leave">DISENGAGE</button>
+            </div>
+
+            <!-- Tactical LCD Screen -->
+            <div class="lcd-screen">
+                <div class="lcd-header">
+                    <span id="lcdCallsign">CALLSIGN: --</span>
+                    <span id="lcdPeersCount">0 ONLINE</span>
+                </div>
+                <div class="lcd-channel">
+                    <span id="lcdRoom" class="lcd-channel-id">CH-00</span>
+                    <span id="lcdFreq" class="lcd-frequency">146.520 MHz</span>
+                </div>
+                <div class="lcd-banner">
+                    <span id="channelStatusText" class="state-badge state-standby">STANDBY [IDLE]</span>
+                    <span id="speakerNotice" style="opacity: 0.8; font-size: 0.75rem;">ALL CLEAR</span>
+                </div>
+            </div>
+
+            <!-- Real-time Oscilloscope Canvas -->
+            <div class="visualizer-container">
+                <canvas id="audioCanvas"></canvas>
+            </div>
+
+            <!-- Live video mesh -->
+            <section id="videoPanel" class="video-panel hidden" aria-label="Live video">
                 <div class="video-panel-header">
-                    <span>VIDEO</span>
-                    <button id="btnCamera" class="small-control active" type="button" aria-pressed="true">Camera on</button>
+                    <span>LIVE VIDEO</span>
+                    <div class="video-header-actions">
+                        <button id="btnCamera" class="camera-button" type="button" aria-pressed="true">CAMERA ON</button>
+                    </div>
                 </div>
-                <div class="video-grid">
+                <div id="videoGrid" class="video-grid">
                     <div class="video-tile local-video-tile">
                         <video id="localVideo" autoplay muted playsinline></video>
                         <span class="video-name">YOU</span>
-                        <button class="fullscreen-button" type="button" aria-label="Watch your video fullscreen">↗</button>
+                        <button class="fullscreen-button" type="button" title="Watch YOU fullscreen" aria-label="Watch YOU fullscreen">&#x26F6;</button>
                     </div>
                     <div id="remoteVideos" class="remote-videos"></div>
                 </div>
             </section>
 
-            <nav class="call-controls" aria-label="Call controls">
-                <button id="btnSpeaker" class="round-control active" type="button" aria-pressed="true">
-                    <span class="control-icon">◖))</span><span>Speaker</span>
-                </button>
-                <button id="btnCameraToggle" class="round-control" type="button">
-                    <span class="control-icon">▣</span><span>Camera</span>
-                </button>
-                <button id="btnMembers" class="round-control" type="button">
-                    <span class="control-icon">◉◉</span><span>Members</span>
-                </button>
-                <button id="btnMoreCall" class="round-control" type="button">
-                    <span class="control-icon">•••</span><span>More</span>
-                </button>
-            </nav>
+            <!-- Active Peers in Channel -->
+            <div class="peers-section">
+                <div class="peers-label">
+                    <span>Channel Operators</span>
+                    <span id="peersSummary">Direct Mesh</span>
+                </div>
+                <div id="peersList" class="peers-list">
+                    <!-- Peers populated dynamically -->
+                </div>
+            </div>
 
-            <div class="talk-area">
-                <button id="btnPttLock" class="lock-control" type="button" aria-pressed="false">
-                    <span class="lock-symbol">♙</span><span>Lock PTT</span>
-                </button>
-                <div id="pttRing" class="ptt-ring">
-                    <button id="pttButton" class="ptt-button" type="button">
-                        <span class="mic-symbol"></span>
-                        <strong id="pttLabel">HOLD TO TALK</strong>
-                        <small id="pttHint">PUSH TO TRANSMIT</small>
+            <!-- Tactical Push-To-Talk Button -->
+            <div class="ptt-area">
+                <div id="pttRing" class="ptt-outer-ring">
+                    <button id="pttButton" class="ptt-button">
+                        <span class="ptt-mic-icon">🎙️</span>
+                        <span id="pttLabel" class="ptt-label">HOLD TALK</span>
+                        <span id="pttHint" class="ptt-hint">Push To Transmit</span>
                     </button>
                 </div>
-                <button id="btnLeave" class="leave-control" type="button">
-                    <span class="hangup-symbol">⌕</span><span>Leave</span>
-                </button>
             </div>
-            <label class="spacebar-option"><input id="chkSpacebar" type="checkbox" checked> Spacebar to talk</label>
-        </section>
-    </main>
-    <div id="toast" class="toast-notice" role="status"></div>
+
+            <!-- Device Controls -->
+            <div class="device-controls">
+                <div class="toggle-group">
+                    <button id="btnPttLock" class="ptt-lock-button" type="button" aria-pressed="false" title="Click PTT once to transmit and again to stop">
+                        <span class="lock-icon">&#128274;</span>
+                        <span>PTT LOCK</span>
+                    </button>
+                    <label class="toggle-item" title="Hold SPACEBAR to speak">
+                        <input type="checkbox" id="chkSpacebar" checked>
+                        <span>Spacebar PTT</span>
+                    </label>
+                </div>
+                <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #64748b;">
+                    OPUS 48kHz
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="static/js/webrtc.js"></script>
     <script src="static/js/app.js"></script>
 </body>

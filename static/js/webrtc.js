@@ -92,12 +92,6 @@ class WebRTCManager {
         return videoTracks.length > 0;
     }
 
-    setRemoteAudioEnabled(enabled) {
-        this.remoteAudioElements.forEach(audioElement => {
-            audioElement.volume = enabled ? 1 : 0;
-        });
-    }
-
     hasCamera() {
         return Boolean(this.localStream && this.localStream.getVideoTracks().length);
     }
