@@ -462,6 +462,7 @@ body {
     height: 100%;
     object-fit: cover;
     background: #1d5cff;
+    transform: scaleX(-1);
 }
 
 .video-tile video.camera-off {
