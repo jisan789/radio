@@ -50,11 +50,8 @@ class WebRTCManager {
 
         try {
             this.localStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                },
+                // Keep the call audio natural while preventing speaker feedback.
+                audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false },
                 video: false
             });
 
@@ -93,12 +90,7 @@ class WebRTCManager {
 
             if (this.localStream) {
                 this.micSourceNode = this.audioContext.createMediaStreamSource(this.localStream);
-                // Create a silent gain so mic audio doesn't echo into the local speaker!
-                const silentGain = this.audioContext.createGain();
-                silentGain.gain.value = 0.0;
                 this.micSourceNode.connect(this.analyser);
-                this.analyser.connect(silentGain);
-                silentGain.connect(this.audioContext.destination);
             }
         } catch (e) {
             console.warn("Audio analyzer setup failed:", e);
@@ -137,6 +129,8 @@ class WebRTCManager {
             if (!audioEl) {
                 audioEl = new Audio();
                 audioEl.autoplay = true;
+                audioEl.playsInline = true;
+                audioEl.volume = 1;
                 this.remoteAudioElements.set(targetId, audioEl);
             }
             if (event.streams && event.streams[0]) {

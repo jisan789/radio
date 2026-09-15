@@ -33,7 +33,6 @@
     const toast = document.getElementById('toast');
     const networkAddress = document.getElementById('networkAddress');
     const audioCanvas = document.getElementById('audioCanvas');
-    const chkAudioFX = document.getElementById('chkAudioFX');
     const chkSpacebar = document.getElementById('chkSpacebar');
 
     // State Variables
@@ -121,11 +120,6 @@
         localStorage.setItem('walkyTalkyUsername', usernameInput.value.trim());
     });
 
-    // Toggle Audio FX setting
-    chkAudioFX.addEventListener('change', (e) => {
-        window.tacticalAudioFX.enabled = e.target.checked;
-    });
-
     // Join Channel
     async function joinRoom() {
         const userVal = usernameInput.value.trim();
@@ -145,9 +139,6 @@
         username = userVal;
         currentRoom = roomVal;
         localStorage.setItem('walkyTalkyUsername', username);
-
-        // Initialize Web Audio & Synthesizer on user gesture
-        window.tacticalAudioFX.init();
 
         // Initialize WebRTC
         webrtcManager = new WebRTCManager((signalData) => {
@@ -173,8 +164,6 @@
 
         ws.onopen = () => {
             showToast(`Connected to Channel [${currentRoom}]`);
-            window.tacticalAudioFX.playJoinTone();
-
             // Transition UI
             lobbyView.classList.add('hidden');
             deviceView.classList.remove('hidden');
@@ -226,7 +215,6 @@
                 knownPeers.set(msg.peer.client_id, msg.peer.username);
                 updatePeersUI();
                 showToast(`${msg.peer.username} tuned in`);
-                window.tacticalAudioFX.playJoinTone();
                 break;
 
             case 'peer_left':
@@ -326,7 +314,6 @@
 
         isTransmitting = true;
         activeSpeakerIds.add(clientId);
-        window.tacticalAudioFX.playPttKey();
         updateAudioState();
         ws.send(JSON.stringify({ type: 'talk_request' }));
     }
@@ -338,7 +325,6 @@
         }
         activeSpeakerIds.delete(clientId);
         isTransmitting = false;
-        window.tacticalAudioFX.playRogerBeep();
         updateAudioState();
     }
 
