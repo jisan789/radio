@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web Walkie-Talkie | Tactical PTT Audio</title>
+    <meta name="description" content="Browser-based real-time push-to-talk communication system using WebRTC and WebSockets.">
+
+    <!-- Google Fonts for Tactical Styling -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-notice">Connecting...</div>
+
+    <!-- VIEW 1: LOBBY / JOIN ROOM -->
+    <div id="lobbyView" class="view-card">
+        <div class="antenna-stud"></div>
+        <div class="lobby-header">
+            <div class="radio-badge">
+                <span>📡</span> WebRTC Comm Unit
+            </div>
+            <h1 class="lobby-title">Web Walkie-Talkie</h1>
+            <p class="lobby-subtitle">Real-time Push-to-Talk Voice Relay</p>
+        </div>
+
+        <div class="lobby-body">
+            <div class="input-group">
+                <label class="input-label" for="usernameInput">Operator Callsign (Name)</label>
+                <input type="text" id="usernameInput" class="input-field" placeholder="e.g. Operator" maxlength="15" autocomplete="off" spellcheck="false">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label" for="roomInput">Channel Frequency / Room Code</label>
+                <input type="text" id="roomInput" class="input-field" placeholder="ALPHA-1" maxlength="12" autocomplete="off" spellcheck="false" style="text-transform: uppercase;">
+                <div class="channels-quick">
+                    <span class="channel-pill" data-channel="ALPHA-1">ALPHA-1</span>
+                    <span class="channel-pill" data-channel="BRAVO-2">BRAVO-2</span>
+                    <span class="channel-pill" data-channel="DELTA-9">DELTA-9</span>
+                    <span class="channel-pill" data-channel="TACTICAL">TACTICAL</span>
+                </div>
+            </div>
+
+            <button id="btnJoin" class="btn-primary">
+                <span>⚡</span> Engage Channel
+            </button>
+        </div>
+    </div>
+
+    <!-- VIEW 2: ACTIVE WALKIE-TALKIE DEVICE -->
+    <div id="deviceView" class="view-card hidden">
+        <div class="antenna-stud"></div>
+        <div class="walkie-device">
+            <!-- Top Status Bar -->
+            <div class="device-top-bar">
+                <div class="top-indicators">
+                    <div class="led-indicator">
+                        <span id="txLed" class="led-dot"></span>
+                        <span style="color:#ef4444">TX</span>
+                    </div>
+                    <div class="led-indicator">
+                        <span id="rxLed" class="led-dot"></span>
+                        <span style="color:#10b981">RX</span>
+                    </div>
+                </div>
+                <div id="connectionStatus" style="font-family: var(--font-mono); color: #38bdf8;">ONLINE</div>
+                <button id="btnLeave" class="btn-leave">DISENGAGE</button>
+            </div>
+
+            <!-- Tactical LCD Screen -->
+            <div class="lcd-screen">
+                <div class="lcd-header">
+                    <span id="lcdCallsign">CALLSIGN: --</span>
+                    <span id="lcdPeersCount">0 ONLINE</span>
+                </div>
+                <div class="lcd-channel">
+                    <span id="lcdRoom" class="lcd-channel-id">CH-00</span>
+                    <span id="lcdFreq" class="lcd-frequency">146.520 MHz</span>
+                </div>
+                <div class="lcd-banner">
+                    <span id="channelStatusText" class="state-badge state-standby">STANDBY [IDLE]</span>
+                    <span id="speakerNotice" style="opacity: 0.8; font-size: 0.75rem;">ALL CLEAR</span>
+                </div>
+            </div>
+
+            <!-- Real-time Oscilloscope Canvas -->
+            <div class="visualizer-container">
+                <canvas id="audioCanvas"></canvas>
+            </div>
+
+            <!-- Active Peers in Channel -->
+            <div class="peers-section">
+                <div class="peers-label">
+                    <span>Channel Operators</span>
+                    <span id="peersSummary">Direct Mesh</span>
+                </div>
+                <div id="peersList" class="peers-list">
+                    <!-- Peers populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Tactical Push-To-Talk Button -->
+            <div class="ptt-area">
+                <div id="pttRing" class="ptt-outer-ring">
+                    <button id="pttButton" class="ptt-button">
+                        <span class="ptt-mic-icon">🎙️</span>
+                        <span id="pttLabel" class="ptt-label">HOLD TALK</span>
+                        <span id="pttHint" class="ptt-hint">Push To Transmit</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Device Controls & Toggles -->
+            <div class="device-controls">
+                <div class="toggle-group">
+                    <label class="toggle-item" title="Play Roger Beep on release & Mic click">
+                        <input type="checkbox" id="chkAudioFX" checked>
+                        <span>Radio FX</span>
+                    </label>
+                    <label class="toggle-item" title="Hold SPACEBAR to speak">
+                        <input type="checkbox" id="chkSpacebar" checked>
+                        <span>Spacebar PTT</span>
+                    </label>
+                </div>
+                <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #64748b;">
+                    OPUS 48kHz
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Info / Mobile Connection Footer -->
+    <div class="network-info-card">
+        <span>App Address:</span>
+        <span id="networkAddress" class="network-url">Detecting...</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="static/js/audio-effects.js"></script>
+    <script src="static/js/webrtc.js"></script>
+    <script src="static/js/app.js"></script>
+</body>
+</html>
